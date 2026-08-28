@@ -27,6 +27,9 @@
     }
     h1 { font-size: 1.45rem; font-weight: 650; letter-spacing: -0.02em; margin: 0 0 6px; }
     h2 { font-size: 1.05rem; font-weight: 650; margin: 28px 0 8px; }
+    details { margin: 18px 0 0; }
+    summary { cursor: pointer; }
+    summary h2 { display: inline; margin: 0; }
     p { color: var(--muted); line-height: 1.45; margin: 0 0 16px; font-size: 0.95rem; }
     .caption { font-size: 0.75rem; color: var(--dim); margin: 6px 0 0; }
     .hint {
@@ -159,38 +162,50 @@
 
   <div class="stats" id="stats"></div>
 
-  <h2>Yearly finish</h2>
-  <p class="hint">Tap a name on the right to isolate that line. Tap a year on the bottom for that season’s standings.</p>
-  <div class="chart-wrap">
-    <svg id="chart" viewBox="0 0 860 420" role="img" aria-label="League finish by year"></svg>
-  </div>
-  <div id="chart-reset"></div>
-  <div id="focus-panel"></div>
-  <div id="year-panel"></div>
+  <details open>
+    <summary><h2>Yearly finish</h2></summary>
+    <p class="hint">Tap a name on the right to isolate that line. Tap a year on the bottom for that season’s standings.</p>
+    <div class="chart-wrap">
+      <svg id="chart" viewBox="0 0 860 420" role="img" aria-label="League finish by year"></svg>
+    </div>
+    <div id="chart-reset"></div>
+    <div id="focus-panel"></div>
+    <div id="year-panel"></div>
+  </details>
 
-  <h2>Average finish</h2>
-  <p class="caption" id="avg-caption">Tap a team to project a 2026 title and see where they move.</p>
-  <div id="avg-move"></div>
-  <div class="bars" id="averages"></div>
+  <details open>
+    <summary><h2>Average finish</h2></summary>
+    <p class="caption" id="avg-caption">Tap a team to project a 2026 title and see where they move.</p>
+    <div id="avg-move"></div>
+    <div class="bars" id="averages"></div>
+  </details>
 
-  <h2>Most volatile</h2>
-  <p class="caption">Sample standard deviation of place. Longer = wilder.</p>
-  <div class="bars" id="volatility"></div>
+  <details>
+    <summary><h2>Most volatile</h2></summary>
+    <p class="caption">Sample standard deviation of place. Longer = wilder.</p>
+    <div class="bars" id="volatility"></div>
+  </details>
 
-  <h2>Playoff appearances</h2>
-  <p class="caption">Top 6, 2019–2025 · out of 7</p>
-  <div class="bars" id="playoffs"></div>
+  <details>
+    <summary><h2>Playoff appearances</h2></summary>
+    <p class="caption">Top 6, 2019–2025 · out of 7</p>
+    <div class="bars" id="playoffs"></div>
+  </details>
 
-  <h2>Toilet bowl appearances</h2>
-  <p class="caption">7th–10th, 2019–2025 · out of 7</p>
-  <div class="bars" id="toilets"></div>
+  <details>
+    <summary><h2>Toilet bowl appearances</h2></summary>
+    <p class="caption">7th–10th, 2019–2025 · out of 7</p>
+    <div class="bars" id="toilets"></div>
+  </details>
 
-  <h2>Every finish</h2>
-  <div class="chips" id="sorts"></div>
-  <div class="table-wrap">
-    <table id="table"></table>
-  </div>
-  <p class="caption">Green = 1st · blue = podium · red = toilet (7th–10th)</p>
+  <details>
+    <summary><h2>Every finish</h2></summary>
+    <div class="chips" id="sorts"></div>
+    <div class="table-wrap">
+      <table id="table"></table>
+    </div>
+    <p class="caption">Green = 1st · blue = podium · red = toilet (7th–10th)</p>
+  </details>
 
   <script>
     const YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025];
