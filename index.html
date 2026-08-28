@@ -71,8 +71,32 @@
       font-weight: 560;
     }
     .chip.active { background: #f0f0f0; color: #111; border-color: #f0f0f0; }
-    .chart-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    #chart { display: block; min-width: 640px; width: 100%; height: auto; }
+    .chart-wrap { overflow: hidden; }
+    #chart { display: block; width: 100%; max-width: 100%; height: auto; touch-action: manipulation; }
+    #team-taps {
+      display: none;
+      margin: 6px 0 0;
+    }
+    #team-taps.on {
+      display: flex;
+      flex-direction: column;
+    }
+    #team-taps button {
+      appearance: none;
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 4px;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-size: 0.92rem;
+      font-weight: 560;
+      text-align: left;
+    }
+    #team-taps button.dim { opacity: 0.35; }
     .bars { display: flex; flex-direction: column; gap: 9px; margin: 12px 0 8px; }
     .bar-row {
       display: grid;
@@ -166,8 +190,9 @@
     <summary><h2>Yearly finish</h2></summary>
     <p class="hint">Tap a name on the right to isolate that line. Tap a year on the bottom for that season’s standings.</p>
     <div class="chart-wrap">
-      <svg id="chart" viewBox="0 0 860 420" role="img" aria-label="League finish by year"></svg>
+      <svg id="chart" viewBox="0 0 390 430" role="img" aria-label="League finish by year"></svg>
     </div>
+    <div id="team-taps"></div>
     <div id="chart-reset"></div>
     <div id="focus-panel"></div>
     <div id="year-panel"></div>
@@ -238,6 +263,48 @@
       BubbaCuckShremp: "#7eb8e8",
     };
 
+    const measureCtx = document.createElement("canvas").getContext("2d");
+    function measureText(text, fontSize, weight = 500) {
+      measureCtx.font = `${weight} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+      return measureCtx.measureText(text).width;
+    }
+    function nameChunks(team) {
+      return team.match(/[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+/g) || [team];
+    }
+    function wrapName(team, maxW, fontSize) {
+      if (measureText(team, fontSize) <= maxW) return [team];
+      const chunks = nameChunks(team);
+      if (chunks.length < 2) return [team];
+      let best = [chunks[0], chunks.slice(1).join("")];
+      let bestScore = Infinity;
+      for (let i = 1; i < chunks.length; i++) {
+        const a = chunks.slice(0, i).join("");
+        const b = chunks.slice(i).join("");
+        if (measureText(a, fontSize) > maxW || measureText(b, fontSize) > maxW) continue;
+        const score = Math.abs(measureText(a, fontSize) - measureText(b, fontSize));
+        if (score < bestScore) {
+          best = [a, b];
+          bestScore = score;
+        }
+      }
+      return best;
+    }
+    function shortName(team) {
+      const map = {
+        DarkWingDucks2023: "DarkWing",
+        TedCumberbatch: "TedCumber",
+        KingHenryXXVI: "KingHenry",
+        BubbaCuckShremp: "BubbaCuck",
+        TrumanCooper: "Truman",
+        SF69erss: "SF69erss",
+        ChiefGumby: "ChiefGumby",
+        TipsUp: "TipsUp",
+        bigjberg: "bigjberg",
+        Arae: "Arae",
+      };
+      return map[team] || team;
+    }
+
     const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
     const stdev = (xs) => {
       const m = mean(xs);
@@ -265,6 +332,7 @@
         worst: Math.max(...finishes),
         titles: finishes.filter((n) => n === 1).length,
         playoffs: finishes.filter((n) => n <= 6).length,
+        podiums: finishes.filter((n) => n === 2 || n === 3).length,
         toilets: finishes.filter((n) => n >= 7).length,
         latest: finishes[finishes.length - 1],
         hypoAvg: (finishes.reduce((a, b) => a + b, 0) + 1) / (finishes.length + 1),
@@ -281,6 +349,8 @@
     const bestLast3 = [...all].sort((a, b) => a.last3 - b.last3)[0];
     const mostPlayoffs = [...all].sort((a, b) => b.playoffs - a.playoffs || a.avg - b.avg)[0];
     const mostToilets = [...all].sort((a, b) => b.toilets - a.toilets || b.avg - a.avg)[0];
+    all.forEach((s) => { s.clownScore = s.playoffs * 3 + s.podiums * 2 + (11 - s.avg); });
+    const clown = [...all].filter((s) => s.titles === 0).sort((a, b) => b.clownScore - a.clownScore)[0];
 
     let focus = "all";
     let avgWin = null;
@@ -300,6 +370,7 @@
 
     function renderStats() {
       document.getElementById("stats").innerHTML = `
+        <div class="stat" title="Among 0-title teams: playoffs×3 + podiums×2 + (11−avg)"><b>${clown.team}</b><span>Biggest clown · 0 titles</span></div>
         <div class="stat"><b>${steadiest.team}</b><span>Steadiest · ±${fmt(steadiest.stdev)}</span></div>
         <div class="stat"><b>${fmt(bestAvg.avg)}</b><span>Best average · ${bestAvg.team}</span></div>
         <div class="stat"><b>${mostTitles.titles} titles</b><span>${mostTitles.team} · 2019–21 three-peat</span></div>
@@ -318,15 +389,64 @@
       document.getElementById("show-all").onclick = () => { focus = "all"; draw(); };
     }
 
+    function pickTeam(team) {
+      focus = focus === team ? "all" : team;
+      draw();
+    }
+
+    function pickYear(year) {
+      hoverYear = hoverYear === year ? null : year;
+      draw();
+    }
+
+    function chartLayout(width) {
+      const phone = width < 520;
+      const left = phone ? 22 : 36;
+      const yearSize = phone ? 11 : 12;
+      const minPlot = Math.max(168, (YEARS.length - 1) * (measureText("2025", yearSize) + 6));
+      const room = Math.max(52, width - left - minPlot);
+      const tryFit = (fontSize, names) => {
+        const lines = names.map((team) => wrapName(team, room - 14, fontSize));
+        const widest = Math.max(...lines.flat().map((line) => measureText(line, fontSize, 600)));
+        const right = Math.ceil(widest + 14);
+        return { fontSize, names, lines, right, ok: right <= room };
+      };
+      const attempt =
+        tryFit(phone ? 11 : 12, TEAMS).ok ? tryFit(phone ? 11 : 12, TEAMS) :
+        tryFit(10, TEAMS).ok ? tryFit(10, TEAMS) :
+        tryFit(10, TEAMS.map(shortName));
+      const axisShort = attempt.names !== TEAMS;
+      const rankGap = phone ? 44 : 36;
+      const bottom = phone ? 48 : 36;
+      const top = 16;
+      const height = top + rankGap * 9 + bottom;
+      return {
+        phone,
+        width,
+        height,
+        pad: { top, right: attempt.right, bottom, left },
+        plotW: Math.max(140, width - left - attempt.right),
+        plotH: rankGap * 9,
+        rankGap,
+        nameSize: attempt.fontSize,
+        yearSize,
+        nameLines: Object.fromEntries(TEAMS.map((team, i) => [team, attempt.lines[i]])),
+        axisShort,
+        useTapList: axisShort || !attempt.ok,
+      };
+    }
+
     function drawChart() {
-      const width = 860, height = 420;
-      const pad = { top: 18, right: 148, bottom: 36, left: 44 };
-      const plotW = width - pad.left - pad.right;
-      const plotH = height - pad.top - pad.bottom;
+      const svg = document.getElementById("chart");
+      const wrap = svg.parentElement;
+      const width = Math.max(Math.floor(wrap.clientWidth || wrap.getBoundingClientRect().width || 358), 280);
+      const layout = chartLayout(width);
+      const { pad, plotW, plotH, nameSize, yearSize, nameLines, rankGap } = layout;
+      const height = layout.height;
       const xAt = (i) => pad.left + (i / (YEARS.length - 1)) * plotW;
       const yAt = (place) => pad.top + ((place - 1) / 9) * plotH;
       const ns = "http://www.w3.org/2000/svg";
-      const svg = document.getElementById("chart");
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
       svg.replaceChildren();
 
       const add = (name, attrs, parent = svg) => {
@@ -344,7 +464,7 @@
           "stroke-width": place === 1 || place === 10 ? 1.25 : 1,
         });
         const t = add("text", {
-          x: pad.left - 10, y: y + 4, "text-anchor": "end",
+          x: pad.left - 6, y: y + 4, "text-anchor": "end",
           fill: place <= 3 ? "#c8c8d0" : "#6a6a73", "font-size": 11,
         });
         t.textContent = place;
@@ -361,32 +481,29 @@
       });
       cutLabel.textContent = "playoff cut";
 
+      const colW = plotW / (YEARS.length - 1);
       YEARS.forEach((year, i) => {
         const x = xAt(i);
+        const hitX = i === 0 ? Math.max(0, pad.left - 8) : x - colW / 2;
+        const hitEnd = i === YEARS.length - 1 ? width - pad.right : x + colW / 2;
         const hit = add("rect", {
-          x: x - plotW / YEARS.length / 2, y: pad.top,
-          width: plotW / YEARS.length, height: plotH,
+          x: hitX, y: 0,
+          width: Math.max(hitEnd - hitX, 32), height,
           fill: hoverYear === year ? "#1c1c22" : "transparent",
         });
         hit.style.cursor = "pointer";
-        hit.addEventListener("click", () => {
-          hoverYear = hoverYear === year ? null : year;
-          draw();
-        });
+        hit.addEventListener("click", () => pickYear(year));
         if (hoverYear === year) {
           add("line", { x1: x, x2: x, y1: pad.top, y2: pad.top + plotH, stroke: "#3a3a44", "stroke-width": 1 });
         }
         const label = add("text", {
-          x, y: height - 12, "text-anchor": "middle",
+          x, y: height - 14, "text-anchor": "middle",
           fill: hoverYear === year ? "#f0f0f0" : "#9a9aa3",
-          "font-size": 12, "font-weight": hoverYear === year ? 600 : 400,
+          "font-size": yearSize, "font-weight": hoverYear === year ? 600 : 400,
         });
         label.textContent = year;
         label.style.cursor = "pointer";
-        label.addEventListener("click", () => {
-          hoverYear = hoverYear === year ? null : year;
-          draw();
-        });
+        label.style.pointerEvents = "none";
       });
 
       TEAMS.forEach((team) => {
@@ -406,20 +523,52 @@
             fill: "#0b0b0d", stroke: color, "stroke-width": place === 1 ? 2.4 : 1.8,
           }, g);
         });
+        const lines = nameLines[team];
+        const y = yAt(finishes[finishes.length - 1]);
+        const nameHit = add("rect", {
+          x: width - pad.right,
+          y: y - rankGap / 2,
+          width: pad.right,
+          height: rankGap,
+          fill: "transparent",
+        }, g);
+        nameHit.style.cursor = "pointer";
+        nameHit.addEventListener("click", () => pickTeam(team));
         const name = add("text", {
-          x: width - pad.right + 10,
-          y: yAt(finishes[finishes.length - 1]) + 4,
+          x: width - pad.right + 8,
+          y: y + 4 - (lines.length - 1) * 6,
           fill: on ? color : "#4a4a52",
-          "font-size": 11,
+          "font-size": nameSize,
           "font-weight": on && focus !== "all" ? 600 : 500,
         }, g);
-        name.textContent = team;
-        name.style.cursor = "pointer";
-        name.addEventListener("click", () => {
-          focus = focus === team ? "all" : team;
-          draw();
+        name.style.pointerEvents = "none";
+        lines.forEach((line, li) => {
+          const span = add("tspan", { x: width - pad.right + 8, dy: li === 0 ? 0 : nameSize + 1 }, name);
+          span.textContent = line;
         });
+        const tip = add("title", {}, name);
+        tip.textContent = team;
       });
+
+      renderTeamTaps(layout);
+    }
+
+    function renderTeamTaps(layout) {
+      const el = document.getElementById("team-taps");
+      if (!layout.useTapList) {
+        el.className = "";
+        el.innerHTML = "";
+        return;
+      }
+      el.className = "on";
+      el.innerHTML = TEAMS.map((team) => {
+        const on = focus === "all" || focus === team;
+        return `<button type="button" data-team="${team}" class="${on ? "" : "dim"}" style="color:${COLOR[team]}" title="${team}">${team}</button>`;
+      }).join("");
+      el.onclick = (e) => {
+        const btn = e.target.closest("[data-team]");
+        if (btn) pickTeam(btn.dataset.team);
+      };
     }
 
     function renderFocus() {
@@ -591,6 +740,14 @@
 
     renderStats();
     draw();
+    const chartWrap = document.querySelector(".chart-wrap");
+    let chartW = chartWrap.clientWidth;
+    new ResizeObserver(() => {
+      const w = chartWrap.clientWidth;
+      if (Math.abs(w - chartW) < 2) return;
+      chartW = w;
+      drawChart();
+    }).observe(chartWrap);
   </script>
 </body>
 </html>
