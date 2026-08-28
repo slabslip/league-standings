@@ -3,802 +3,407 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>League standings 2019–2025</title>
+  <meta name="theme-color" content="#0b0b0d" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <title>CuckleChunckle</title>
   <style>
     :root {
-      --bg: #0b0b0d;
-      --card: #141416;
-      --line: #2a2a30;
-      --text: #f0f0f0;
-      --muted: #9a9aa3;
-      --dim: #6a6a73;
-      --green: #3ddc97;
-      --red: #e05555;
+      --bg: #0b0b0d; --card: #141416; --line: #2a2a30;
+      --text: #f0f0f0; --muted: #9a9aa3; --dim: #8a8a93;
+      --green: #3ddc97; --red: #e05555;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; background: var(--bg); color: var(--text); overflow-x: hidden; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      padding: 20px 16px 48px;
-      max-width: 920px;
-      margin: 0 auto;
-      -webkit-text-size-adjust: 100%;
+      font-size: 16px;
+      max-width: 920px; margin: 0 auto;
+      padding:
+        max(16px, env(safe-area-inset-top, 0px))
+        max(16px, env(safe-area-inset-right, 0px))
+        max(24px, env(safe-area-inset-bottom, 0px))
+        max(16px, env(safe-area-inset-left, 0px));
+      -webkit-tap-highlight-color: rgba(255,255,255,0.08);
     }
-    h1 { font-size: 1.45rem; font-weight: 650; letter-spacing: -0.02em; margin: 0 0 6px; }
-    h2 { font-size: 1.05rem; font-weight: 650; margin: 28px 0 8px; }
-    details { margin: 18px 0 0; }
-    summary { cursor: pointer; }
-    summary h2 { display: inline; margin: 0; }
-    p { color: var(--muted); line-height: 1.45; margin: 0 0 16px; font-size: 0.95rem; }
-    .caption { font-size: 0.75rem; color: var(--dim); margin: 6px 0 0; }
-    .hint {
-      background: #1a1a22;
-      border: 1px solid #3d3d4a;
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 0.85rem;
-      line-height: 1.4;
-      color: #d8d8e0;
-      margin: 0 0 12px;
+    h1 { font-size: 1.4rem; font-weight: 650; margin: 0 0 6px; letter-spacing: -0.02em; }
+    h2 { font-size: 1.05rem; font-weight: 650; margin: 26px 0 8px; }
+    p { color: var(--muted); line-height: 1.45; margin: 0 0 14px; }
+    .caption { font-size: 0.8125rem; color: var(--dim); margin: 6px 0 14px; }
+    .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    @media (min-width: 640px) { .tiles { grid-template-columns: repeat(5, 1fr); } }
+    button.tile, button.row, button.chip, button.tab, .row {
+      appearance: none; font: inherit; color: inherit; text-align: left;
+      background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+      min-height: 44px; touch-action: manipulation;
     }
-    .stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin: 16px 0;
+    button.tile, button.row, button.chip, button.tab { cursor: pointer; }
+    button.tile { padding: 14px 12px; font-weight: 650; }
+    button.tile.on { border-color: #4a4a58; background: #1c1c22; }
+    button.tile:focus-visible, button.tab:focus-visible, button.chip:focus-visible, button.row:focus-visible {
+      outline: 2px solid #c8c8d0; outline-offset: 2px;
     }
-    @media (min-width: 640px) {
-      .stats { grid-template-columns: repeat(4, 1fr); }
+    .you { color: var(--text); font-weight: 650; }
+    .nav, .toggle { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 16px; }
+    button.tab, button.chip {
+      border-radius: 999px; padding: 10px 14px; color: var(--muted);
     }
-    .stat {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 12px;
+    button.tab.on, button.chip.on { color: var(--text); background: #1c1c22; }
+    .hero { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+    .hero b { display: block; font-size: 2rem; letter-spacing: -0.03em; }
+    .pos { color: var(--green); } .neg { color: var(--red); }
+    .row { width: 100%; padding: 12px; margin: 0 0 8px; }
+    .row-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+    .names { font-weight: 600; }
+    .date { color: var(--dim); font-size: 0.8125rem; }
+    .margin { font-variant-numeric: tabular-nums; font-weight: 650; }
+    .detail { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .row.open .detail { display: block; }
+    .bags { display: grid; gap: 12px; }
+    @media (min-width: 640px) { .bags { grid-template-columns: 1fr 1fr; } }
+    .bag h3 { margin: 0 0 6px; font-size: 0.92rem; }
+    .leg { display: flex; justify-content: space-between; gap: 8px; font-size: 0.84rem; padding: 3px 0; color: var(--muted); }
+    button.leg {
+      appearance: none; font: inherit; color: inherit; width: 100%;
+      background: transparent; border: 0; border-radius: 0; padding: 8px 0;
+      cursor: pointer; min-height: 44px; touch-action: manipulation;
     }
-    .stat b { display: block; font-size: 1.05rem; margin-bottom: 2px; }
-    .stat span { color: var(--muted); font-size: 0.75rem; }
-    .clown-stat {
-      appearance: none;
-      width: 100%;
-      font: inherit;
-      color: inherit;
-      position: relative;
-      cursor: help;
-      text-align: left;
-    }
-    .clown-tip {
-      display: none;
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 0.72rem;
-      font-weight: 400;
-      line-height: 1.45;
-    }
-    .clown-stat.open .clown-tip { display: block; }
-    @media (hover: hover) {
-      .clown-stat:hover .clown-tip,
-      .clown-stat:focus-within .clown-tip { display: block; }
-    }
-    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 12px; }
-    .chip {
-      appearance: none;
-      border: 1px solid var(--line);
-      background: #1a1a1e;
-      color: var(--text);
-      border-radius: 999px;
-      padding: 7px 11px;
-      font-size: 0.78rem;
-      font-weight: 560;
-    }
-    .chip.active { background: #f0f0f0; color: #111; border-color: #f0f0f0; }
-    .chart-wrap { overflow: hidden; width: 100%; max-width: 100%; min-width: 0; }
-    #chart { display: block; width: 100%; max-width: 100%; min-width: 0; height: auto; touch-action: manipulation; }
-    #team-taps {
-      display: none;
-      margin: 6px 0 0;
-    }
-    #team-taps.on {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0 8px;
-    }
-    #team-taps button {
-      appearance: none;
-      display: flex;
-      align-items: center;
-      min-height: 44px;
-      padding: 0 4px;
-      border: 0;
-      border-bottom: 1px solid var(--line);
-      background: transparent;
-      color: inherit;
-      font: inherit;
-      font-size: 0.92rem;
-      font-weight: 560;
-      text-align: left;
-    }
-    #team-taps button.dim { opacity: 0.35; }
-    .bars { display: flex; flex-direction: column; gap: 9px; margin: 12px 0 8px; }
-    .bar-row {
-      display: grid;
-      grid-template-columns: minmax(110px, 28%) 1fr 48px;
-      gap: 8px;
-      align-items: center;
-    }
-    #averages .bar-row {
-      grid-template-columns: minmax(118px, 30%) 1fr minmax(92px, 7.8rem);
-      cursor: pointer;
-      padding: 6px 4px;
-      border-radius: 8px;
-    }
-    #averages .bar-row.picked { background: #1a1a1e; outline: 1px solid #3a3a44; }
-    .bar-name {
-      font-size: 0.78rem;
-      font-weight: 560;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .bar-track {
-      position: relative;
-      height: 12px;
-      background: #1a1a1e;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      overflow: hidden;
-    }
-    .bar-fill { height: 100%; border-radius: 999px; }
-    .bar-ghost {
-      position: absolute;
-      inset: 0 auto 0 0;
-      opacity: 0.28;
-    }
-    .bar-val {
-      font-size: 0.75rem;
-      font-variant-numeric: tabular-nums;
-      color: var(--muted);
-      text-align: right;
-    }
-    .move-note {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 0.9rem;
-      margin: 8px 0 4px;
-    }
-    .detail {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 12px 14px;
-      margin-top: 12px;
-    }
-    .detail-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-top: 8px;
-    }
-    .detail-grid b { display: block; font-variant-numeric: tabular-nums; }
-    .detail-grid span { color: var(--muted); font-size: 0.72rem; }
-    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.82rem;
-      font-variant-numeric: tabular-nums;
-      min-width: 800px;
-    }
-    th, td { padding: 8px 7px; text-align: right; border-bottom: 1px solid var(--line); }
-    th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--bg); }
-    th { color: var(--dim); font-weight: 560; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
-    .p1 { color: var(--green); font-weight: 700; }
-    .p23 { color: #7ad4f0; font-weight: 650; }
-    .playoff { color: #c8c8d0; }
-    .toilet { color: var(--red); }
-    .year-list { margin: 0; padding-left: 18px; color: var(--muted); font-size: 0.88rem; }
-    .year-list li { margin: 4px 0; }
+    button.leg.on { color: var(--text); }
+    .hops { margin: 2px 0 10px 8px; padding-left: 10px; border-left: 2px solid var(--line); }
+    .hop { display: flex; justify-content: space-between; gap: 8px; font-size: 0.8125rem; padding: 4px 0; color: var(--dim); }
+    .hop b { color: var(--text); font-variant-numeric: tabular-nums; }
+    .leg b { color: var(--text); font-variant-numeric: tabular-nums; }
+    .warn { color: #e0b44c; font-size: 0.8125rem; }
+    .badge { font-size: 0.8125rem; color: #e0b44c; }
+    svg.spark { width: 100%; height: 72px; margin-top: 8px; }
+    a.back { color: var(--muted); font-size: 0.85rem; }
   </style>
 </head>
 <body>
-  <h1>League finish, 2019–2025</h1>
-  <p>Every team, every year. 1st is at the top.</p>
-
-  <div class="stats" id="stats"></div>
-
-  <details open>
-    <summary><h2>Yearly finish</h2></summary>
-    <p class="hint">Tap a team name to isolate that line. Tap a year on the bottom for that season’s standings.</p>
-    <div class="chart-wrap">
-      <svg id="chart" viewBox="0 0 390 430" role="img" aria-label="League finish by year"></svg>
-    </div>
-    <div id="team-taps"></div>
-    <div id="chart-reset"></div>
-    <div id="focus-panel"></div>
-    <div id="year-panel"></div>
-  </details>
-
-  <details open>
-    <summary><h2>Average finish</h2></summary>
-    <p class="caption" id="avg-caption">Tap a team to project a 2026 title and see where they move.</p>
-    <div id="avg-move"></div>
-    <div class="bars" id="averages"></div>
-  </details>
-
-  <details>
-    <summary><h2>Most volatile</h2></summary>
-    <p class="caption">Sample standard deviation of place. Longer = wilder.</p>
-    <div class="bars" id="volatility"></div>
-  </details>
-
-  <details>
-    <summary><h2>Playoff appearances</h2></summary>
-    <p class="caption">Top 6, 2019–2025 · out of 7</p>
-    <div class="bars" id="playoffs"></div>
-  </details>
-
-  <details>
-    <summary><h2>Toilet bowl appearances</h2></summary>
-    <p class="caption">7th–10th, 2019–2025 · out of 7</p>
-    <div class="bars" id="toilets"></div>
-  </details>
-
-  <details>
-    <summary><h2>Every finish</h2></summary>
-    <div class="chips" id="sorts"></div>
-    <div class="table-wrap">
-      <table id="table"></table>
-    </div>
-    <p class="caption">Green = 1st · blue = podium · red = toilet (7th–10th)</p>
-  </details>
-
+  <h1>CuckleChunckle</h1>
+  <p id="lead">Who are you? Everything below is your received bags, your used picks, and how they aged.</p>
+  <div class="tiles" id="who"></div>
+  <div id="app" hidden></div>
   <script>
-    const YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025];
-    const TEAMS = [
-      "SF69erss", "TipsUp", "TedCumberbatch", "KingHenryXXVI", "DarkWingDucks2023",
-      "TrumanCooper", "BubbaCuckShremp", "bigjberg", "Arae", "ChiefGumby",
-    ];
-    const FINISH = {
-      SF69erss: [9, 9, 10, 9, 4, 1, 1],
-      TipsUp: [4, 7, 4, 3, 3, 3, 2],
-      TedCumberbatch: [5, 8, 8, 5, 1, 4, 3],
-      KingHenryXXVI: [2, 4, 9, 4, 8, 2, 4],
-      DarkWingDucks2023: [10, 5, 5, 6, 9, 10, 5],
-      TrumanCooper: [8, 2, 7, 10, 2, 5, 6],
-      BubbaCuckShremp: [6, 10, 3, 7, 10, 8, 10],
-      bigjberg: [3, 6, 6, 8, 6, 9, 7],
-      Arae: [1, 1, 1, 2, 5, 6, 9],
-      ChiefGumby: [7, 3, 2, 1, 7, 7, 8],
-    };
-    const COLOR = {
-      TipsUp: "#3ddc97",
-      Arae: "#5ec8f0",
-      TedCumberbatch: "#4c8dde",
-      KingHenryXXVI: "#f0a040",
-      ChiefGumby: "#9b7ed9",
-      TrumanCooper: "#e07ab5",
-      SF69erss: "#e8c030",
-      bigjberg: "#8b8b9a",
-      DarkWingDucks2023: "#e05555",
-      BubbaCuckShremp: "#7eb8e8",
-    };
+    const fmt = (n) => n == null || Number.isNaN(n) ? "—" : Math.round(n).toLocaleString();
+    const cls = (n) => n == null ? "" : n >= 0 ? "pos" : "neg";
+    let members = [];
+    let me = null;
+    let data = null;
+    let league = null;
+    let picks = null;
+    let lens = "realized";
+    let view = "home";
+    let draftTab = "rookie";
+    let year = "all";
+    let openId = null;
+    let openPick = null;
+    let partnerName = null;
 
-    const measureCtx = document.createElement("canvas").getContext("2d");
-    function measureText(text, fontSize, weight = 500) {
-      measureCtx.font = `${weight} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-      return measureCtx.measureText(text).width;
+    const params = new URLSearchParams(location.search);
+    const startMe = params.get("me");
+
+    function spark(series) {
+      const keys = Object.keys(series[0] || {}).filter((k) => k !== "as_of");
+      if (series.length < 2 || !keys.length) return "";
+      const vals = keys.map((k) => series.map((p) => p[k] || 0));
+      const flat = vals.flat();
+      const min = Math.min(...flat), max = Math.max(...flat), span = max - min || 1;
+      const w = 300, h = 72, pad = 6;
+      const colors = ["#3ddc97", "#7aa2ff", "#e0b44c"];
+      return '<svg class="spark" viewBox="0 0 ' + w + " " + h + '" preserveAspectRatio="none">' +
+        vals.map((arr, i) => {
+          const d = arr.map((v, x) => {
+            const px = pad + (x / (arr.length - 1)) * (w - pad * 2);
+            const py = pad + (1 - (v - min) / span) * (h - pad * 2);
+            return (x ? "L" : "M") + px.toFixed(1) + " " + py.toFixed(1);
+          }).join(" ");
+          return '<path d="' + d + '" fill="none" stroke="' + colors[i % 3] + '" stroke-width="1.6"/>';
+        }).join("") + "</svg>";
     }
-    function nameChunks(team) {
-      return team.match(/[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+/g) || [team];
+
+    function hopHtml(key) {
+      const p = picks && picks[key];
+      if (!p) return '<div class="hops caption">No hop tape.</div>';
+      const head = p.became
+        ? p.became + (p.used_by ? " · used by " + p.used_by : "")
+        : (p.still_pick ? "still a pick" : "");
+      return '<div class="hops">' + (head ? '<div class="date">' + head + "</div>" : "")
+        + p.hops.map((h) => {
+          const exit = h.exit === "drafted" ? " · used" : h.exit === "flip" ? " · sold" : " · held";
+          return '<div class="hop"><span>' + h.date + " · " + (h.from || "?") + " → " + h.to + exit
+            + "</span><b>" + fmt(h.t0) + " → " + fmt(h.out) + "</b></div>";
+        }).join("") + "</div>";
     }
-    function wrapName(team, maxW, fontSize) {
-      if (measureText(team, fontSize) <= maxW) return [team];
-      const chunks = nameChunks(team);
-      if (chunks.length < 2) return [team];
-      let best = [chunks[0], chunks.slice(1).join("")];
-      let bestScore = Infinity;
-      for (let i = 1; i < chunks.length; i++) {
-        const a = chunks.slice(0, i).join("");
-        const b = chunks.slice(i).join("");
-        if (measureText(a, fontSize) > maxW || measureText(b, fontSize) > maxW) continue;
-        const score = Math.abs(measureText(a, fontSize) - measureText(b, fontSize));
-        if (score < bestScore) {
-          best = [a, b];
-          bestScore = score;
+
+    function bagBlock(title, legs, total, unpriced) {
+      const items = (legs || []).map((l) => {
+        const val = l.flag === "unpriced" || l.value == null
+          ? "no DP row"
+          : l.flag === "priced_as_mid" ? fmt(l.value) + " · Mid"
+          : fmt(l.value);
+        const body = "<span>" + l.label + "</span><b>" + val + "</b>";
+        if (l.kind === "pick" && l.asset_key) {
+          const open = openPick === l.asset_key;
+          return '<button type="button" class="leg' + (open ? " on" : "") + '" data-pick="' + l.asset_key + '">'
+            + body + "</button>" + (open ? hopHtml(l.asset_key) : "");
         }
+        return '<div class="leg">' + body + "</div>";
+      }).join("");
+      const warn = unpriced ? '<div class="warn">' + unpriced + " no DP row</div>" : "";
+      const shown = unpriced && !total ? "—" : fmt(total);
+      return '<div class="bag"><h3>' + title + " · " + shown + "</h3>" + warn + items + "</div>";
+    }
+
+    async function loadMembers() {
+      members = await (await fetch("data/ui/members.json")).json();
+      document.getElementById("who").innerHTML = members.map((m) =>
+        '<button type="button" class="tile" data-id="' + m.user_id + '">' + m.name + "</button>"
+      ).join("");
+      const hit = members.find((m) => m.name === startMe || m.user_id === startMe);
+      if (hit) await selectMe(hit.user_id);
+    }
+
+    async function selectMe(id) {
+      me = members.find((m) => m.user_id === id);
+      data = await (await fetch("data/ui/me/" + id + ".json")).json();
+      if (!league) league = await (await fetch("data/ui/league.json")).json();
+      if (!picks) picks = await (await fetch("data/ui/picks.json")).json();
+      history.replaceState(null, "", "?me=" + encodeURIComponent(me.name));
+      document.querySelectorAll("#who .tile").forEach((b) => b.classList.toggle("on", b.dataset.id === id));
+      document.getElementById("lead").textContent = me.name + " · DynastyProcess Superflex · FAAB thrown out";
+      document.getElementById("app").hidden = false;
+      view = "home";
+      partnerName = null;
+      openPick = null;
+      render();
+    }
+
+    function gradeLabel(g) {
+      if (g === "you_extract") return "you extract";
+      if (g === "they_extract") return "they extract";
+      return "even";
+    }
+
+    function gradeCls(g) {
+      if (g === "you_extract") return "pos";
+      if (g === "they_extract") return "neg";
+      return "";
+    }
+
+    function sideOf(t) {
+      return lens === "pick" ? t.pick : t.realized;
+    }
+
+    function renderHome() {
+      const h = data.hero || {};
+      const per = lens === "pick" ? h.pick_per_trade : h.realized_per_trade;
+      const total = lens === "pick" ? h.pick_total : h.realized_total;
+      return '<div class="hero"><b class="' + cls(per) + '">' + fmt(per) + '</b>'
+        + '<div class="caption">per complete trade · received vs what you sent'
+        + (total != null ? " · total " + fmt(total) : "")
+        + " · " + (h.two_way || 0) + " complete"
+        + (h.incomplete ? " · " + h.incomplete + " incomplete (no DP row), off this number" : "")
+        + "</div></div>"
+        + styleLine()
+        + (data.hit || data.miss ? '<p class="caption">' +
+          (data.hit ? "Rookie hit: " + data.hit.player + " (" + data.hit.season + " R" + data.hit.round + ")" : "") +
+          (data.hit && data.miss ? " · " : "") +
+          (data.miss ? "Miss: " + data.miss.player : "") + "</p>" : "")
+        + partnerDigest()
+        + "<h2>Latest trades</h2>" + data.recent_trades.map(tradeRow).join("")
+        + "<h2>Latest rookie picks</h2>" + data.recent_rookies.map(pickRow).join("");
+    }
+
+    function styleLine() {
+      const s = data.style;
+      if (!s || !s.label) return "";
+      const dir = s.sold_picks_for_players === s.sold_players_for_picks
+        ? "mix of pick and player bags"
+        : s.sold_picks_for_players > s.sold_players_for_picks
+          ? "you sell picks for players (" + s.sold_picks_for_players + ")"
+          : "you sell players for picks (" + s.sold_players_for_picks + ")";
+      return '<p class="caption">' + s.label + " · " + dir + "</p>";
+    }
+
+    function partnerDigest() {
+      const h = data.partner_headlines || {};
+      if (!h.best && !h.most) return "";
+      const bit = (label, row, extra) => {
+        if (!row) return "";
+        return '<button type="button" class="chip" data-partner="' + row.name + '">' + label + " · " + row.name
+          + (extra || "") + "</button>";
+      };
+      return '<h2>Trade partners</h2><div class="toggle">'
+        + bit("Best", h.best, h.best && h.best.per != null ? " · " + fmt(h.best.per) + "/trade" : "")
+        + bit("Worst", h.worst, h.worst && h.worst.per != null ? " · " + fmt(h.worst.per) + "/trade" : "")
+        + bit("Most", h.most, h.most ? " · " + h.most.trades + " deals" : "")
+        + "</div>";
+    }
+
+    function tradeRow(t) {
+      const s = sideOf(t);
+      const open = openId === t.transaction_id;
+      const incomplete = t.incomplete || s.incomplete;
+      const gotShow = s.unpriced && !s.today ? "—" : fmt(s.today);
+      const sentShow = s.sent_unpriced && !s.sent_today ? "—" : fmt(s.sent_today);
+      let detail = "";
+      if (open) {
+        let bags = bagBlock("You got", s.legs, s.today, s.unpriced)
+          + bagBlock("You sent", s.sent, s.sent_today, s.sent_unpriced);
+        if ((t.other_bags || []).length > 1) {
+          bags += t.other_bags.map((b) => {
+            const side = lens === "pick" ? b.pick : b.realized;
+            return bagBlock(b.name + " got", side.legs, side.today, side.unpriced);
+          }).join("");
+        }
+        const line = spark((lens === "pick" ? t.pick_year_ends : t.year_ends).map((p) => ({ as_of: p.as_of, ...p.points })));
+        detail = '<div class="detail"><div class="bags">' + bags + "</div>" + line + "</div>";
       }
-      return best;
-    }
-    function shortName(team) {
-      const map = {
-        DarkWingDucks2023: "DarkWing",
-        TedCumberbatch: "TedCumber",
-        KingHenryXXVI: "KingHenry",
-        BubbaCuckShremp: "BubbaCuck",
-        TrumanCooper: "Truman",
-        SF69erss: "SF69erss",
-        ChiefGumby: "ChiefGumby",
-        TipsUp: "TipsUp",
-        bigjberg: "bigjberg",
-        Arae: "Arae",
-      };
-      return map[team] || team;
+      const others = t.others.join(" · ");
+      return '<button type="button" class="row' + (open ? " open" : "") + '" data-id="' + t.transaction_id + '">'
+        + '<div class="row-top"><div><div class="names">' + others + "</div>"
+        + '<div class="date">' + t.date
+        + " · got " + gotShow + " / sent " + sentShow
+        + (incomplete ? ' <span class="badge">no DP row</span>' : "")
+        + "</div></div>"
+        + '<div class="margin ' + cls(s.today_delta) + '">' + fmt(s.today_delta) + "</div></div>"
+        + detail + "</button>";
     }
 
-    const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
-    const stdev = (xs) => {
-      const m = mean(xs);
-      return Math.sqrt(xs.reduce((s, x) => s + (x - m) ** 2, 0) / (xs.length - 1));
-    };
-    const fmt = (n) => n.toFixed(2);
-    const ordinal = (n) => (n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : n + "th");
-    const markClass = (n) => (n === 1 ? "p1" : n <= 3 ? "p23" : n >= 7 ? "toilet" : "playoff");
-    const playoffStreak = (xs) => {
-      let n = 0;
-      for (let i = xs.length - 1; i >= 0 && xs[i] <= 6; i--) n++;
-      return n;
-    };
+    function pickRow(p) {
+      const n = draftTab === "startup" ? p.player_today : p.surplus;
+      const meta = p.season + " R" + p.round + (p.surplus == null && !p.startup ? " · no pick-cost grade" : "");
+      const line = spark((p.year_ends || []).map((m) => ({ as_of: m.as_of, player: m.player || 0, pick: m.pick || 0 })));
+      return '<div class="row"><div class="row-top"><div><div class="names">' + p.player + "</div>"
+        + '<div class="date">' + meta + "</div></div>"
+        + '<div class="margin ' + cls(n) + '">' + fmt(n) + "</div></div>" + line + "</div>";
+    }
 
-    const all = TEAMS.map((team) => {
-      const finishes = FINISH[team];
-      return {
-        team,
-        finishes,
-        avg: mean(finishes),
-        stdev: stdev(finishes),
-        last3: mean(finishes.slice(-3)),
-        streak: playoffStreak(finishes),
-        best: Math.min(...finishes),
-        worst: Math.max(...finishes),
-        titles: finishes.filter((n) => n === 1).length,
-        playoffs: finishes.filter((n) => n <= 6).length,
-        podiums: finishes.filter((n) => n <= 3).length,
-        toilets: finishes.filter((n) => n >= 7).length,
-        latest: finishes[finishes.length - 1],
-        hypoAvg: (finishes.reduce((a, b) => a + b, 0) + 1) / (finishes.length + 1),
-      };
+    function renderTrades() {
+      const years = [...new Set(data.trades.map((t) => t.season))].sort().reverse();
+      let list = data.trades;
+      if (year !== "all") list = list.filter((t) => t.season === year);
+      return '<p class="caption">Received vs sent. One-way and FAAB-only are out. Incomplete (no DP row) stay listed and stay off the needle.</p>'
+        + '<div class="toggle">'
+        + '<button type="button" class="chip' + (year === "all" ? " on" : "") + '" data-year="all">All</button>'
+        + years.map((y) => '<button type="button" class="chip' + (year === y ? " on" : "") + '" data-year="' + y + '">' + y + "</button>").join("")
+        + "</div>"
+        + list.map(tradeRow).join("");
+    }
+
+    function renderDrafts() {
+      const list = data.drafts[draftTab] || [];
+      const used = data.drafts.rookie.length + data.drafts.startup.length;
+      const graded = data.drafts.rookie.filter((p) => p.surplus != null).length;
+      return '<p class="caption">' + used + " picks used · " + graded + " rookie picks graded vs pick cost · "
+        + data.drafts.startup.length + " startup (ranked by player today)</p>"
+        + '<div class="toggle">'
+        + '<button type="button" class="chip' + (draftTab === "rookie" ? " on" : "") + '" data-dt="rookie">Rookie 2020–26</button>'
+        + '<button type="button" class="chip' + (draftTab === "startup" ? " on" : "") + '" data-dt="startup">Startup 2019</button>'
+        + "</div>"
+        + list.map(pickRow).join("");
+    }
+
+    function renderLeague() {
+      const you = me && me.name;
+      const traders = (league.traders || []).map((t) =>
+        '<div class="row-top" style="padding:8px 0"><div class="names' + (t.name === you ? " you" : "") + '">'
+        + t.name + (t.name === you ? " · you" : "")
+        + (t.style && t.style.label ? " · " + t.style.label : "") + "</div>"
+        + '<div class="margin ' + cls(t.realized_per_trade) + '">' + fmt(t.realized_per_trade) + " / trade</div></div>"
+        + '<div class="date">' + t.two_way + " complete"
+        + (t.incomplete ? " · " + t.incomplete + " incomplete" : "") + "</div>"
+      ).join("");
+      const d = (league.drafters_rookie || []).map((t) =>
+        '<div class="row-top" style="padding:8px 0"><div class="names' + (t.name === you ? " you" : "") + '">'
+        + t.name + (t.name === you ? " · you" : "") + "</div>"
+        + '<div class="margin ' + cls(t.per_pick) + '">' + fmt(t.per_pick) + " / pick</div></div>"
+        + '<div class="date">' + t.used + " used · " + t.graded + " graded"
+        + (t.best ? " · hit " + t.best.player : "") + "</div>"
+      ).join("");
+      return "<h2>Traders · per complete two-way</h2>" + traders
+        + "<h2>Drafters · rookie surplus per pick</h2>" + d;
+    }
+
+    function renderPartners() {
+      const list = data.partners || [];
+      const perOf = (p) => lens === "pick" ? p.pick_per_trade : p.realized_per_trade;
+      const rows = list.slice().sort((a, b) => (perOf(b) ?? -1e9) - (perOf(a) ?? -1e9)).map((p) => {
+        const per = perOf(p);
+        const g = lens === "pick" ? (per >= 100 ? "you_extract" : per <= -100 ? "they_extract" : "even") : p.grade;
+        return '<button type="button" class="row' + (partnerName === p.name ? " open" : "") + '" data-partner="' + p.name + '">'
+          + '<div class="row-top"><div><div class="names">' + p.name + "</div>"
+          + '<div class="date">' + p.complete + " complete · " + p.trades + " deals · "
+          + '<span class="' + gradeCls(g) + '">' + gradeLabel(g) + "</span></div></div>"
+          + '<div class="margin ' + cls(per) + '">' + fmt(per) + "</div></div></button>";
+      }).join("");
+      let detail = "";
+      if (partnerName) {
+        const p = list.find((x) => x.name === partnerName);
+        const deals = data.trades.filter((t) => t.others.length === 1 && t.others[0] === partnerName);
+        detail = p ? "<h2>" + p.name + "</h2>"
+          + '<p class="caption">' + gradeLabel(lens === "pick"
+            ? (p.pick_per_trade >= 100 ? "you_extract" : p.pick_per_trade <= -100 ? "they_extract" : "even")
+            : p.grade)
+          + " · " + fmt(lens === "pick" ? p.pick_per_trade : p.realized_per_trade) + " per complete trade"
+          + " · total " + fmt(lens === "pick" ? p.pick_total : p.realized_total)
+          + ". 3-team deals are not in this pair grade.</p>"
+          + deals.map(tradeRow).join("") : "";
+      }
+      return '<p class="caption">2-team complete trades only. You extract / even / they extract uses ±100 DP points per trade. Best and worst need 2+ complete deals.</p>'
+        + rows + detail;
+    }
+
+    function render() {
+      const app = document.getElementById("app");
+      const nav = '<div class="nav">'
+        + ["home","trades","partners","drafts","league"].map((v) =>
+          '<button type="button" class="tab' + (view === v ? " on" : "") + '" data-view="' + v + '">' + v + "</button>"
+        ).join("")
+        + "</div>"
+        + '<div class="toggle">'
+        + '<button type="button" class="chip' + (lens === "realized" ? " on" : "") + '" data-lens="realized">Became the player</button>'
+        + '<button type="button" class="chip' + (lens === "pick" ? " on" : "") + '" data-lens="pick">Pick at trade day</button>'
+        + "</div>";
+      const body = view === "home" ? renderHome() : view === "trades" ? renderTrades()
+        : view === "partners" ? renderPartners() : view === "drafts" ? renderDrafts() : renderLeague();
+      app.innerHTML = nav + body;
+    }
+
+    document.getElementById("who").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-id]");
+      if (b) selectMe(b.dataset.id);
     });
-    const avgOrder = [...all].sort((a, b) => a.avg - b.avg);
-    all.forEach((s) => { s.avgRank = avgOrder.findIndex((x) => x.team === s.team) + 1; });
-
-    const steadiest = [...all].sort((a, b) => a.stdev - b.stdev)[0];
-    const bestAvg = [...all].sort((a, b) => a.avg - b.avg)[0];
-    const mostTitles = [...all].sort((a, b) => b.titles - a.titles)[0];
-    const champ = all.find((s) => s.latest === 1);
-    const longestStreak = [...all].sort((a, b) => b.streak - a.streak || a.avg - b.avg)[0];
-    const bestLast3 = [...all].sort((a, b) => a.last3 - b.last3)[0];
-    const mostPlayoffs = [...all].sort((a, b) => b.playoffs - a.playoffs || a.avg - b.avg)[0];
-    const mostToilets = [...all].sort((a, b) => b.toilets - a.toilets || b.avg - a.avg)[0];
-    all.forEach((s) => { s.clownScore = s.playoffs * 3 + s.podiums * 2 + (11 - s.avg); });
-    const clown = [...all].filter((s) => s.titles === 0).sort((a, b) => b.clownScore - a.clownScore)[0];
-
-    let focus = "all";
-    let avgWin = null;
-    let sortKey = "consistency";
-    let hoverYear = null;
-
-    function sorted() {
-      return [...all].sort((a, b) => {
-        if (sortKey === "consistency") return a.stdev - b.stdev || a.avg - b.avg;
-        if (sortKey === "average") return a.avg - b.avg || a.stdev - b.stdev;
-        if (sortKey === "titles") return b.titles - a.titles || a.avg - b.avg;
-        if (sortKey === "playoffs") return b.playoffs - a.playoffs || a.avg - b.avg;
-        if (sortKey === "toilets") return b.toilets - a.toilets || b.avg - a.avg;
-        return a.latest - b.latest || a.avg - b.avg;
-      });
-    }
-
-    function renderStats() {
-      const clownWhy = [
-        "From this page’s 2019–2025 finish table. A championship is 1st place.",
-        "Only teams with zero titles are eligible.",
-        "clownScore = playoffs×3 + podiums×2 + (11 − avg).",
-        "Playoffs = finishes ≤ 6. Podiums = finishes ≤ 3. Avg = mean finish.",
-        "Highest score among 0-title teams is Biggest clown: the strongest team that has never won it all.",
-      ].join(" ");
-      document.getElementById("stats").innerHTML = `
-        <button class="stat clown-stat" type="button" id="clown-stat" title="${clownWhy}" aria-expanded="false" aria-describedby="clown-tip">
-          <b>${clown.team}</b><span>Biggest clown</span>
-          <div class="clown-tip" id="clown-tip">${clownWhy}</div>
-        </button>
-        <div class="stat"><b>${steadiest.team}</b><span>Steadiest · ±${fmt(steadiest.stdev)}</span></div>
-        <div class="stat"><b>${fmt(bestAvg.avg)}</b><span>Best average · ${bestAvg.team}</span></div>
-        <div class="stat"><b>${mostTitles.titles} titles</b><span>${mostTitles.team} · 2019–21 three-peat</span></div>
-        <div class="stat"><b>${champ.team}</b><span>2025 champion</span></div>
-        <div class="stat"><b>${longestStreak.streak} yrs</b><span>Playoff streak · ${longestStreak.team}</span></div>
-        <div class="stat"><b>${fmt(bestLast3.last3)}</b><span>Best last 3 years · ${bestLast3.team}</span></div>
-        <div class="stat"><b>${mostPlayoffs.playoffs} / 7</b><span>Most playoffs · ${mostPlayoffs.team}</span></div>
-        <div class="stat"><b>${mostToilets.toilets} / 7</b><span>Most toilet bowls · ${mostToilets.team}</span></div>
-      `;
-      const clownEl = document.getElementById("clown-stat");
-      clownEl.onclick = () => {
-        const open = clownEl.classList.toggle("open");
-        clownEl.setAttribute("aria-expanded", open ? "true" : "false");
-      };
-    }
-
-    function renderReset() {
-      const el = document.getElementById("chart-reset");
-      if (focus === "all") { el.innerHTML = ""; return; }
-      el.innerHTML = `<button class="chip" type="button" id="show-all">Show all teams</button>`;
-      document.getElementById("show-all").onclick = () => { focus = "all"; draw(); };
-    }
-
-    function pickTeam(team) {
-      focus = focus === team ? "all" : team;
-      draw();
-    }
-
-    function pickYear(year) {
-      hoverYear = hoverYear === year ? null : year;
-      draw();
-    }
-
-    function chartLayout(width) {
-      const phone = width < 520;
-      const left = phone ? 18 : 36;
-      const yearSize = phone ? 11 : 12;
-      const rankGap = phone ? 32 : 36;
-      const bottom = phone ? 36 : 36;
-      const top = 14;
-      if (phone) {
-        return {
-          phone, width, height: top + rankGap * 9 + bottom,
-          pad: { top, right: 8, bottom, left },
-          plotW: width - left - 8,
-          plotH: rankGap * 9,
-          rankGap, nameSize: 10, yearSize,
-          nameLines: {},
-          axisShort: true,
-          useTapList: true,
-          yearLabel: (y) => "'" + String(y).slice(2),
-        };
-      }
-      const minPlot = Math.max(168, (YEARS.length - 1) * (measureText("2025", yearSize) + 6));
-      const room = Math.max(52, width - left - minPlot);
-      const tryFit = (fontSize, names) => {
-        const lines = names.map((team) => wrapName(team, room - 14, fontSize));
-        const widest = Math.max(...lines.flat().map((line) => measureText(line, fontSize, 600)));
-        const right = Math.ceil(widest + 14);
-        return { fontSize, names, lines, right, ok: right <= room };
-      };
-      const attempt = tryFit(12, TEAMS).ok ? tryFit(12, TEAMS) : tryFit(11, TEAMS);
-      return {
-        phone, width, height: top + rankGap * 9 + bottom,
-        pad: { top, right: attempt.right, bottom, left },
-        plotW: Math.max(140, width - left - attempt.right),
-        plotH: rankGap * 9,
-        rankGap,
-        nameSize: attempt.fontSize,
-        yearSize,
-        nameLines: Object.fromEntries(TEAMS.map((team, i) => [team, attempt.lines[i]])),
-        axisShort: false,
-        useTapList: false,
-        yearLabel: (y) => String(y),
-      };
-    }
-
-    function drawChart() {
-      const svg = document.getElementById("chart");
-      const wrap = svg.parentElement;
-      const width = Math.max(Math.floor(wrap.clientWidth || wrap.getBoundingClientRect().width || 358), 280);
-      const layout = chartLayout(width);
-      const { pad, plotW, plotH, nameSize, yearSize, nameLines, rankGap } = layout;
-      const height = layout.height;
-      const xAt = (i) => pad.left + (i / (YEARS.length - 1)) * plotW;
-      const yAt = (place) => pad.top + ((place - 1) / 9) * plotH;
-      const ns = "http://www.w3.org/2000/svg";
-      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-      svg.setAttribute("width", "100%");
-      svg.setAttribute("preserveAspectRatio", "xMinYMin meet");
-      svg.replaceChildren();
-
-      const add = (name, attrs, parent = svg) => {
-        const el = document.createElementNS(ns, name);
-        for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
-        parent.appendChild(el);
-        return el;
-      };
-
-      for (let place = 1; place <= 10; place++) {
-        const y = yAt(place);
-        add("line", {
-          x1: pad.left, x2: width - pad.right, y1: y, y2: y,
-          stroke: "#2a2a30",
-          "stroke-width": place === 1 || place === 10 ? 1.25 : 1,
-        });
-        const t = add("text", {
-          x: pad.left - 6, y: y + 4, "text-anchor": "end",
-          fill: place <= 3 ? "#c8c8d0" : "#6a6a73", "font-size": 11,
-        });
-        t.textContent = place;
-      }
-
-      const cutY = yAt(6.5);
-      add("line", {
-        x1: pad.left, x2: width - pad.right, y1: cutY, y2: cutY,
-        stroke: "#3ddc97", "stroke-width": 1, "stroke-dasharray": "5 4", opacity: 0.55,
-      });
-      const cutLabel = add("text", {
-        x: width - pad.right - 4, y: cutY - 5, "text-anchor": "end",
-        fill: "#3ddc97", "font-size": 10, opacity: 0.85,
-      });
-      cutLabel.textContent = "playoff cut";
-
-      const colW = plotW / (YEARS.length - 1);
-      YEARS.forEach((year, i) => {
-        const x = xAt(i);
-        const hitX = i === 0 ? Math.max(0, pad.left - 8) : x - colW / 2;
-        const hitEnd = i === YEARS.length - 1 ? width - pad.right : x + colW / 2;
-        const hit = add("rect", {
-          x: hitX, y: 0,
-          width: Math.max(hitEnd - hitX, 32), height,
-          fill: hoverYear === year ? "#1c1c22" : "transparent",
-        });
-        hit.style.cursor = "pointer";
-        hit.addEventListener("click", () => pickYear(year));
-        if (hoverYear === year) {
-          add("line", { x1: x, x2: x, y1: pad.top, y2: pad.top + plotH, stroke: "#3a3a44", "stroke-width": 1 });
-        }
-        const label = add("text", {
-          x, y: height - 14, "text-anchor": "middle",
-          fill: hoverYear === year ? "#f0f0f0" : "#9a9aa3",
-          "font-size": yearSize, "font-weight": hoverYear === year ? 600 : 400,
-        });
-        label.textContent = layout.yearLabel(year);
-        label.style.cursor = "pointer";
-        label.style.pointerEvents = "none";
-      });
-
-      TEAMS.forEach((team) => {
-        const finishes = FINISH[team];
-        const color = COLOR[team];
-        const on = focus === "all" || focus === team;
-        const g = add("g", { opacity: on ? 1 : 0.14 });
-        const d = finishes.map((place, i) => `${i === 0 ? "M" : "L"} ${xAt(i)} ${yAt(place)}`).join(" ");
-        add("path", {
-          d, fill: "none", stroke: color,
-          "stroke-width": on && focus !== "all" ? 3.2 : 2.2,
-          "stroke-linejoin": "round", "stroke-linecap": "round",
-        }, g);
-        finishes.forEach((place, i) => {
-          add("circle", {
-            cx: xAt(i), cy: yAt(place), r: place === 1 ? 5.5 : 3.6,
-            fill: "#0b0b0d", stroke: color, "stroke-width": place === 1 ? 2.4 : 1.8,
-          }, g);
-        });
-        if (!layout.useTapList) {
-          const lines = nameLines[team];
-          const y = yAt(finishes[finishes.length - 1]);
-          const nameHit = add("rect", {
-            x: width - pad.right,
-            y: y - rankGap / 2,
-            width: pad.right,
-            height: rankGap,
-            fill: "transparent",
-          }, g);
-          nameHit.style.cursor = "pointer";
-          nameHit.addEventListener("click", () => pickTeam(team));
-          const name = add("text", {
-            x: width - pad.right + 8,
-            y: y + 4 - (lines.length - 1) * 6,
-            fill: on ? color : "#4a4a52",
-            "font-size": nameSize,
-            "font-weight": on && focus !== "all" ? 600 : 500,
-          }, g);
-          name.style.pointerEvents = "none";
-          lines.forEach((line, li) => {
-            const span = add("tspan", { x: width - pad.right + 8, dy: li === 0 ? 0 : nameSize + 1 }, name);
-            span.textContent = line;
-          });
-          const tip = add("title", {}, name);
-          tip.textContent = team;
-        }
-      });
-
-      renderTeamTaps(layout);
-    }
-
-    function renderTeamTaps(layout) {
-      const el = document.getElementById("team-taps");
-      if (!layout.useTapList) {
-        el.className = "";
-        el.innerHTML = "";
+    document.getElementById("app").addEventListener("click", (e) => {
+      const pickBtn = e.target.closest("[data-pick]");
+      if (pickBtn) {
+        openPick = openPick === pickBtn.dataset.pick ? null : pickBtn.dataset.pick;
+        render();
         return;
       }
-      el.className = "on";
-      el.innerHTML = TEAMS.map((team) => {
-        const on = focus === "all" || focus === team;
-        return `<button type="button" data-team="${team}" class="${on ? "" : "dim"}" style="color:${COLOR[team]}" title="${team}">${team}</button>`;
-      }).join("");
-      el.onclick = (e) => {
-        const btn = e.target.closest("[data-team]");
-        if (btn) pickTeam(btn.dataset.team);
-      };
-    }
-
-    function renderFocus() {
-      const panel = document.getElementById("focus-panel");
-      if (focus === "all") { panel.innerHTML = ""; return; }
-      const s = all.find((x) => x.team === focus);
-      panel.innerHTML = `
-        <div class="detail">
-          <strong>${s.team}</strong>
-          <div class="detail-grid">
-            <div><b>${fmt(s.avg)}</b><span>Average finish</span></div>
-            <div><b>±${fmt(s.stdev)}</b><span>Year-to-year swing</span></div>
-            <div><b>${ordinal(s.best)} / ${ordinal(s.worst)}</b><span>Best / worst</span></div>
-            <div><b>${s.titles}</b><span>Titles</span></div>
-            <div><b>${s.playoffs} / 7</b><span>Playoffs</span></div>
-            <div><b>${s.toilets} / 7</b><span>Toilet bowls</span></div>
-          </div>
-          <p class="caption" style="margin-top:10px">${YEARS.map((y, i) => y + " " + ordinal(s.finishes[i])).join(" · ")}</p>
-        </div>
-      `;
-    }
-
-    function renderYear() {
-      const panel = document.getElementById("year-panel");
-      if (hoverYear == null) { panel.innerHTML = ""; return; }
-      const idx = YEARS.indexOf(hoverYear);
-      const ranked = TEAMS.map((team) => ({ team, place: FINISH[team][idx] })).sort((a, b) => a.place - b.place);
-      panel.innerHTML = `
-        <h2>${hoverYear} final standings</h2>
-        <ol class="year-list">
-          ${ranked.map((r) => `<li><span class="${markClass(r.place)}">${ordinal(r.place)}</span> · ${r.team}${r.place <= 6 ? " · playoff" : " · toilet bowl"}</li>`).join("")}
-        </ol>
-      `;
-    }
-
-    function pickAvg(team) {
-      avgWin = avgWin === team ? null : team;
-      renderAverages();
-    }
-
-    function renderAverages() {
-      const move = document.getElementById("avg-move");
-      const winner = avgWin ? all.find((s) => s.team === avgWin) : null;
-      const rows = all
-        .map((s) => ({ ...s, shown: winner && s.team === winner.team ? s.hypoAvg : s.avg }))
-        .sort((a, b) => a.shown - b.shown || a.team.localeCompare(b.team));
-      const keep = document.activeElement?.dataset?.avg;
-
-      document.getElementById("avg-caption").textContent =
-        "Tap a team to project a 2026 title and see where they move.";
-
-      if (!winner) {
-        move.innerHTML = "";
-      } else {
-        const newRank = rows.findIndex((s) => s.team === winner.team) + 1;
-        move.innerHTML = `<div class="move-note"><strong>${winner.team}</strong> ${ordinal(winner.avgRank)} → ${ordinal(newRank)} · ${fmt(winner.avg)} → ${fmt(winner.hypoAvg)}</div>
-          <button class="chip" type="button" id="avg-reset">Today’s ranking</button>`;
+      const viewBtn = e.target.closest("[data-view]");
+      if (viewBtn) { view = viewBtn.dataset.view; openId = null; if (view !== "partners") partnerName = null; render(); return; }
+      const partnerBtn = e.target.closest("[data-partner]");
+      if (partnerBtn) {
+        partnerName = partnerBtn.dataset.partner;
+        view = "partners";
+        openId = null;
+        render();
+        return;
       }
-
-      document.getElementById("averages").innerHTML = rows.map((s, i) => {
-        const picked = winner && s.team === winner.team;
-        return `
-        <div class="bar-row${picked ? " picked" : ""}" data-avg="${s.team}" tabindex="0" role="button" aria-pressed="${picked ? "true" : "false"}">
-          <div class="bar-name" style="color:${COLOR[s.team]}">${i + 1}. ${s.team}</div>
-          <div class="bar-track">
-            ${picked ? `<div class="bar-fill bar-ghost" style="width:${(s.avg / 10) * 100}%;background:${COLOR[s.team]}"></div>` : ""}
-            <div class="bar-fill" style="width:${(s.shown / 10) * 100}%;background:${COLOR[s.team]}"></div>
-          </div>
-          <div class="bar-val">${picked ? `${fmt(s.avg)} → ${fmt(s.hypoAvg)}` : fmt(s.avg)}</div>
-        </div>`;
-      }).join("");
-
-      const box = document.getElementById("averages");
-      box.onclick = (e) => {
-        const row = e.target.closest("[data-avg]");
-        if (row) pickAvg(row.dataset.avg);
-      };
-      box.onkeydown = (e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        const row = e.target.closest("[data-avg]");
-        if (!row) return;
-        e.preventDefault();
-        pickAvg(row.dataset.avg);
-      };
-      const reset = document.getElementById("avg-reset");
-      if (reset) reset.onclick = () => { avgWin = null; renderAverages(); };
-      if (keep) box.querySelector(`[data-avg="${keep}"]`)?.focus();
-    }
-
-    function renderBars() {
-      const vol = [...all].sort((a, b) => b.stdev - a.stdev);
-      const maxSwing = vol[0].stdev;
-      document.getElementById("volatility").innerHTML = vol.map((s) => `
-        <div class="bar-row">
-          <div class="bar-name" style="color:${COLOR[s.team]}">${s.team}</div>
-          <div class="bar-track"><div class="bar-fill" style="width:${(s.stdev / maxSwing) * 100}%;background:${COLOR[s.team]}"></div></div>
-          <div class="bar-val">±${fmt(s.stdev)}</div>
-        </div>
-      `).join("");
-
-      renderAverages();
-
-      const playoffRows = [...all].sort((a, b) => b.playoffs - a.playoffs || a.avg - b.avg);
-      document.getElementById("playoffs").innerHTML = playoffRows.map((s) => `
-        <div class="bar-row">
-          <div class="bar-name" style="color:${COLOR[s.team]}">${s.team}</div>
-          <div class="bar-track"><div class="bar-fill" style="width:${(s.playoffs / 7) * 100}%;background:${COLOR[s.team]}"></div></div>
-          <div class="bar-val">${s.playoffs}</div>
-        </div>
-      `).join("");
-
-      const toiletRows = [...all].sort((a, b) => b.toilets - a.toilets || b.avg - a.avg);
-      document.getElementById("toilets").innerHTML = toiletRows.map((s) => `
-        <div class="bar-row">
-          <div class="bar-name" style="color:${COLOR[s.team]}">${s.team}</div>
-          <div class="bar-track"><div class="bar-fill" style="width:${(s.toilets / 7) * 100}%;background:${COLOR[s.team]}"></div></div>
-          <div class="bar-val">${s.toilets}</div>
-        </div>
-      `).join("");
-    }
-
-    function renderTable() {
-      const sorts = [
-        ["consistency", "Steadiest"],
-        ["average", "Best average"],
-        ["titles", "Titles"],
-        ["playoffs", "Playoffs"],
-        ["toilets", "Toilet bowl"],
-        ["latest", "2025 finish"],
-      ];
-      document.getElementById("sorts").innerHTML = sorts.map(([k, label]) =>
-        `<button class="chip${sortKey === k ? " active" : ""}" type="button" data-sort="${k}">${label}</button>`
-      ).join("");
-      document.getElementById("sorts").onclick = (e) => {
-        const btn = e.target.closest("[data-sort]");
-        if (!btn) return;
-        sortKey = btn.dataset.sort;
-        renderTable();
-      };
-
-      const rows = sorted();
-      const head = ["Team", ...YEARS, "Avg", "Swing", "Playoffs", "Toilet", "Titles"];
-      document.getElementById("table").innerHTML = `
-        <thead><tr>${head.map((h) => `<th>${h}</th>`).join("")}</tr></thead>
-        <tbody>
-          ${rows.map((s) => `
-            <tr>
-              <td>${s.team}</td>
-              ${s.finishes.map((n) => `<td class="${markClass(n)}">${n}</td>`).join("")}
-              <td>${fmt(s.avg)}</td>
-              <td>±${fmt(s.stdev)}</td>
-              <td>${s.playoffs}</td>
-              <td>${s.toilets}</td>
-              <td>${s.titles}</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      `;
-    }
-
-    function draw() {
-      drawChart();
-      renderReset();
-      renderFocus();
-      renderYear();
-      renderBars();
-      renderTable();
-    }
-
-    renderStats();
-    draw();
-    const chartWrap = document.querySelector(".chart-wrap");
-    let chartW = chartWrap.clientWidth;
-    new ResizeObserver(() => {
-      const w = chartWrap.clientWidth;
-      if (Math.abs(w - chartW) < 2) return;
-      chartW = w;
-      drawChart();
-    }).observe(chartWrap);
+      const lensBtn = e.target.closest("[data-lens]");
+      if (lensBtn) { lens = lensBtn.dataset.lens; render(); return; }
+      const dt = e.target.closest("[data-dt]");
+      if (dt) { draftTab = dt.dataset.dt; render(); return; }
+      const yr = e.target.closest("[data-year]");
+      if (yr) { year = yr.dataset.year; render(); return; }
+      const row = e.target.closest(".row[data-id]");
+      if (row) { openId = openId === row.dataset.id ? null : row.dataset.id; render(); }
+    });
+    loadMembers().catch((err) => {
+      document.getElementById("lead").textContent = "Serve this folder over http (python3 -m http.server) so data/ui can load.";
+      console.error(err);
+    });
   </script>
 </body>
 </html>
