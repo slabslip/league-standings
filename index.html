@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>League standings 2019–2025</title>
+  <style>
+    :root {
+      --bg: #0b0b0d;
+      --card: #141416;
+      --line: #2a2a30;
+      --text: #f0f0f0;
+      --muted: #9a9aa3;
+      --dim: #6a6a73;
+      --green: #3ddc97;
+      --warn: #e8c030;
+      --red: #e05555;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 20px 16px 48px;
+      max-width: 920px;
+      margin: 0 auto;
+      -webkit-text-size-adjust: 100%;
+    }
+    h1 { font-size: 1.45rem; font-weight: 650; letter-spacing: -0.02em; margin: 0 0 6px; }
+    h2 { font-size: 1.05rem; font-weight: 650; margin: 28px 0 8px; }
+    p { color: var(--muted); line-height: 1.45; margin: 0 0 16px; font-size: 0.95rem; }
+    .caption { font-size: 0.75rem; color: var(--dim); margin: 6px 0 0; }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 16px 0;
+    }
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .stat b { display: block; font-size: 1.05rem; margin-bottom: 2px; }
+    .stat span { color: var(--muted); font-size: 0.75rem; }
+    .callout {
+      background: #10241c;
+      border: 1px solid #1f4a38;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 0.9rem;
+      line-height: 1.45;
+      color: #d7efe4;
+      margin-bottom: 18px;
+    }
+    .callout strong { color: var(--green); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 12px; }
+    .chip {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: #1a1a1e;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 7px 11px;
+      font-size: 0.78rem;
+      font-weight: 560;
+    }
+    .chip.active { background: #f0f0f0; color: #111; border-color: #f0f0f0; }
+    .chart-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    svg { display: block; min-width: 640px; width: 100%; height: auto; }
+    .detail {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-top: 12px;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .detail-grid b { display: block; font-variant-numeric: tabular-nums; }
+    .detail-grid span { color: var(--muted); font-size: 0.72rem; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      font-variant-numeric: tabular-nums;
+      min-width: 720px;
+    }
+    th, td { padding: 8px 7px; text-align: right; border-bottom: 1px solid var(--line); }
+    th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--bg); }
+    th { color: var(--dim); font-weight: 560; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .p1 { color: var(--green); font-weight: 700; }
+    .p23 { color: #7ad4f0; font-weight: 650; }
+    .p810 { color: var(--red); }
+    .year-list { margin: 0; padding-left: 18px; color: var(--muted); font-size: 0.88rem; }
+    .year-list li { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <h1>League finish, 2019–2025</h1>
+  <p>Every team, every year. 1st is at the top. Tap a name to isolate their line. Tap a year on the chart for that season’s table.</p>
+
+  <div class="stats" id="stats"></div>
+  <div class="callout" id="callout"></div>
+
+  <h2>Yearly finish</h2>
+  <p class="caption">Place · 1 at top, 10 at bottom · championships are the bigger rings · 2026 not in yet</p>
+  <div class="chips" id="chips"></div>
+  <div class="chart-wrap">
+    <svg id="chart" viewBox="0 0 860 420" role="img" aria-label="League finish by year"></svg>
+  </div>
+  <div id="focus-panel"></div>
+  <div id="year-panel"></div>
+
+  <h2>Every finish</h2>
+  <div class="chips" id="sorts"></div>
+  <div class="table-wrap">
+    <table id="table"></table>
+  </div>
+  <p class="caption">Green = 1st · blue = podium · red = 8th–10th · swing is year-to-year standard deviation</p>
+
+  <script>
+    const YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025];
+    const TEAMS = [
+      "SF69erss", "TipsUp", "TedCumberbatch", "KingHenryXXVI", "DarkWingDucks2023",
+      "TrumanCooper", "BubbaCuckShremp", "bigjberg", "Arae", "ChiefGumby",
+    ];
+    const FINISH = {
+      SF69erss: [9, 9, 10, 9, 4, 1, 1],
+      TipsUp: [4, 7, 4, 3, 3, 3, 2],
+      TedCumberbatch: [5, 8, 8, 5, 1, 4, 3],
+      KingHenryXXVI: [2, 4, 9, 4, 8, 2, 4],
+      DarkWingDucks2023: [10, 5, 5, 6, 9, 10, 5],
+      TrumanCooper: [8, 2, 7, 10, 2, 5, 6],
+      BubbaCuckShremp: [6, 10, 3, 7, 10, 8, 10],
+      bigjberg: [3, 6, 6, 8, 6, 9, 7],
+      Arae: [1, 1, 1, 2, 5, 6, 9],
+      ChiefGumby: [7, 3, 2, 1, 7, 7, 8],
+    };
+    const COLOR = {
+      TipsUp: "#3ddc97",
+      Arae: "#5ec8f0",
+      TedCumberbatch: "#4c8dde",
+      KingHenryXXVI: "#f0a040",
+      ChiefGumby: "#9b7ed9",
+      TrumanCooper: "#e07ab5",
+      SF69erss: "#e8c030",
+      bigjberg: "#8b8b9a",
+      DarkWingDucks2023: "#e05555",
+      BubbaCuckShremp: "#7eb8e8",
+    };
+
+    const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    const stdev = (xs) => {
+      const m = mean(xs);
+      return Math.sqrt(xs.reduce((s, x) => s + (x - m) ** 2, 0) / (xs.length - 1));
+    };
+    const fmt = (n) => n.toFixed(2);
+    const ordinal = (n) => (n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : n + "th");
+    const markClass = (n) => (n === 1 ? "p1" : n <= 3 ? "p23" : n >= 8 ? "p810" : "");
+
+    const all = TEAMS.map((team) => {
+      const finishes = FINISH[team];
+      return {
+        team,
+        finishes,
+        avg: mean(finishes),
+        stdev: stdev(finishes),
+        best: Math.min(...finishes),
+        worst: Math.max(...finishes),
+        titles: finishes.filter((n) => n === 1).length,
+        podiums: finishes.filter((n) => n <= 3).length,
+        latest: finishes[finishes.length - 1],
+      };
+    });
+
+    const steadiest = [...all].sort((a, b) => a.stdev - b.stdev)[0];
+    const bestAvg = [...all].sort((a, b) => a.avg - b.avg)[0];
+    const mostTitles = [...all].sort((a, b) => b.titles - a.titles)[0];
+    const wildest = [...all].sort((a, b) => b.stdev - a.stdev)[0];
+
+    let focus = "all";
+    let sortKey = "consistency";
+    let hoverYear = null;
+
+    function sorted() {
+      return [...all].sort((a, b) => {
+        if (sortKey === "consistency") return a.stdev - b.stdev || a.avg - b.avg;
+        if (sortKey === "average") return a.avg - b.avg || a.stdev - b.stdev;
+        if (sortKey === "titles") return b.titles - a.titles || a.avg - b.avg;
+        return a.latest - b.latest || a.avg - b.avg;
+      });
+    }
+
+    function renderStats() {
+      document.getElementById("stats").innerHTML = `
+        <div class="stat"><b>${steadiest.team}</b><span>Steadiest · ±${fmt(steadiest.stdev)} places</span></div>
+        <div class="stat"><b>${bestAvg.team}</b><span>Best average · ${fmt(bestAvg.avg)}</span></div>
+        <div class="stat"><b>${mostTitles.titles} titles</b><span>${mostTitles.team}</span></div>
+        <div class="stat"><b>${wildest.team}</b><span>Wildest swing · ±${fmt(wildest.stdev)}</span></div>
+      `;
+      document.getElementById("callout").innerHTML =
+        `<strong>${steadiest.team}</strong> is the flattest good line: average ${fmt(steadiest.avg)}, never worse than ${ordinal(steadiest.worst)}, ${steadiest.podiums} podiums in 7 seasons. Arae three-peated then slid to 9th. SF69erss sat 9th–10th for four years, then went back-to-back.`;
+    }
+
+    function renderChips() {
+      const rows = [{ team: "all", label: "All teams" }, ...sorted().map((s) => ({ team: s.team, label: s.team }))];
+      document.getElementById("chips").innerHTML = rows.map((r) =>
+        `<button class="chip${focus === r.team ? " active" : ""}" data-team="${r.team}">${r.label}</button>`
+      ).join("");
+      document.getElementById("chips").onclick = (e) => {
+        const btn = e.target.closest("[data-team]");
+        if (!btn) return;
+        focus = btn.dataset.team;
+        draw();
+      };
+    }
+
+    function drawChart() {
+      const width = 860, height = 420;
+      const pad = { top: 18, right: 148, bottom: 36, left: 44 };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+      const xAt = (i) => pad.left + (i / (YEARS.length - 1)) * plotW;
+      const yAt = (place) => pad.top + ((place - 1) / 9) * plotH;
+      const ns = "http://www.w3.org/2000/svg";
+      const svg = document.getElementById("chart");
+      svg.replaceChildren();
+
+      const add = (name, attrs, parent = svg) => {
+        const el = document.createElementNS(ns, name);
+        for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+        parent.appendChild(el);
+        return el;
+      };
+
+      for (let place = 1; place <= 10; place++) {
+        const y = yAt(place);
+        add("line", {
+          x1: pad.left, x2: width - pad.right, y1: y, y2: y,
+          stroke: "#2a2a30",
+          "stroke-width": place === 1 || place === 10 ? 1.25 : 1,
+          "stroke-dasharray": place === 4 ? "3 4" : "",
+        });
+        const t = add("text", {
+          x: pad.left - 10, y: y + 4, "text-anchor": "end",
+          fill: place <= 3 ? "#c8c8d0" : "#6a6a73", "font-size": 11,
+        });
+        t.textContent = place;
+      }
+
+      YEARS.forEach((year, i) => {
+        const x = xAt(i);
+        const hit = add("rect", {
+          x: x - plotW / YEARS.length / 2, y: pad.top,
+          width: plotW / YEARS.length, height: plotH,
+          fill: hoverYear === year ? "#1c1c22" : "transparent",
+        });
+        hit.style.cursor = "pointer";
+        hit.addEventListener("click", () => {
+          hoverYear = hoverYear === year ? null : year;
+          draw();
+        });
+        if (hoverYear === year) {
+          add("line", { x1: x, x2: x, y1: pad.top, y2: pad.top + plotH, stroke: "#3a3a44", "stroke-width": 1 });
+        }
+        const label = add("text", {
+          x, y: height - 12, "text-anchor": "middle",
+          fill: hoverYear === year ? "#f0f0f0" : "#9a9aa3",
+          "font-size": 12, "font-weight": hoverYear === year ? 600 : 400,
+        });
+        label.textContent = year;
+        label.style.cursor = "pointer";
+        label.addEventListener("click", () => {
+          hoverYear = hoverYear === year ? null : year;
+          draw();
+        });
+      });
+
+      TEAMS.forEach((team) => {
+        const finishes = FINISH[team];
+        const color = COLOR[team];
+        const on = focus === "all" || focus === team;
+        const g = add("g", { opacity: on ? 1 : 0.14 });
+        const d = finishes.map((place, i) => `${i === 0 ? "M" : "L"} ${xAt(i)} ${yAt(place)}`).join(" ");
+        add("path", {
+          d, fill: "none", stroke: color,
+          "stroke-width": on && focus !== "all" ? 3.2 : 2.2,
+          "stroke-linejoin": "round", "stroke-linecap": "round",
+        }, g);
+        finishes.forEach((place, i) => {
+          add("circle", {
+            cx: xAt(i), cy: yAt(place), r: place === 1 ? 5.5 : 3.6,
+            fill: "#0b0b0d", stroke: color, "stroke-width": place === 1 ? 2.4 : 1.8,
+          }, g);
+        });
+        const name = add("text", {
+          x: width - pad.right + 10,
+          y: yAt(finishes[finishes.length - 1]) + 4,
+          fill: on ? color : "#4a4a52",
+          "font-size": 11,
+          "font-weight": on && focus !== "all" ? 600 : 500,
+        }, g);
+        name.textContent = team;
+        name.style.cursor = "pointer";
+        name.addEventListener("click", () => {
+          focus = focus === team ? "all" : team;
+          draw();
+        });
+      });
+    }
+
+    function renderFocus() {
+      const panel = document.getElementById("focus-panel");
+      if (focus === "all") { panel.innerHTML = ""; return; }
+      const s = all.find((x) => x.team === focus);
+      panel.innerHTML = `
+        <div class="detail">
+          <strong>${s.team}</strong>
+          <div class="detail-grid">
+            <div><b>${fmt(s.avg)}</b><span>Average finish</span></div>
+            <div><b>±${fmt(s.stdev)}</b><span>Year-to-year swing</span></div>
+            <div><b>${ordinal(s.best)} / ${ordinal(s.worst)}</b><span>Best / worst</span></div>
+            <div><b>${s.titles}</b><span>Titles</span></div>
+            <div><b>${s.podiums}</b><span>Podiums</span></div>
+            <div><b>${ordinal(s.latest)}</b><span>2025 finish</span></div>
+          </div>
+          <p class="caption" style="margin-top:10px">${YEARS.map((y, i) => y + " " + ordinal(s.finishes[i])).join(" · ")}</p>
+        </div>
+      `;
+    }
+
+    function renderYear() {
+      const panel = document.getElementById("year-panel");
+      if (hoverYear == null) { panel.innerHTML = ""; return; }
+      const idx = YEARS.indexOf(hoverYear);
+      const ranked = TEAMS.map((team) => ({ team, place: FINISH[team][idx] })).sort((a, b) => a.place - b.place);
+      panel.innerHTML = `
+        <h2>${hoverYear} final standings</h2>
+        <ol class="year-list">
+          ${ranked.map((r) => `<li><span class="${markClass(r.place)}">${ordinal(r.place)}</span> · ${r.team}</li>`).join("")}
+        </ol>
+      `;
+    }
+
+    function renderTable() {
+      const sorts = [
+        ["consistency", "Steadiest"],
+        ["average", "Best average"],
+        ["titles", "Titles"],
+        ["latest", "2025 finish"],
+      ];
+      document.getElementById("sorts").innerHTML = sorts.map(([k, label]) =>
+        `<button class="chip${sortKey === k ? " active" : ""}" data-sort="${k}">${label}</button>`
+      ).join("");
+      document.getElementById("sorts").onclick = (e) => {
+        const btn = e.target.closest("[data-sort]");
+        if (!btn) return;
+        sortKey = btn.dataset.sort;
+        draw();
+      };
+
+      const rows = sorted();
+      const head = ["Team", ...YEARS, "Avg", "Swing", "Range", "Titles"];
+      document.getElementById("table").innerHTML = `
+        <thead><tr>${head.map((h) => `<th>${h}</th>`).join("")}</tr></thead>
+        <tbody>
+          ${rows.map((s) => `
+            <tr>
+              <td>${s.team}</td>
+              ${s.finishes.map((n) => `<td class="${markClass(n)}">${n}</td>`).join("")}
+              <td>${fmt(s.avg)}</td>
+              <td>±${fmt(s.stdev)}</td>
+              <td>${s.best}–${s.worst}</td>
+              <td>${s.titles}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      `;
+    }
+
+    function draw() {
+      renderChips();
+      drawChart();
+      renderFocus();
+      renderYear();
+      renderTable();
+    }
+
+    renderStats();
+    draw();
+  </script>
+</body>
+</html>
