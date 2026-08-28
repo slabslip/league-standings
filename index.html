@@ -139,6 +139,7 @@
       const items = (legs || []).map((l) => {
         const val = l.flag === "unpriced" || l.value == null
           ? "no DP row"
+          : l.flag === "priced_as_2028" ? fmt(l.value) + " · as 2028"
           : l.flag === "priced_as_mid" ? fmt(l.value) + " · Mid"
           : fmt(l.value);
         const body = "<span>" + l.label + "</span><b>" + val + "</b>";
@@ -250,7 +251,7 @@
       if (open) {
         let bags = bagBlock("You got", s.legs, s.today, s.unpriced)
           + bagBlock("You sent", s.sent, s.sent_today, s.sent_unpriced);
-        if ((t.other_bags || []).length > 1) {
+        if ((t.other_bags || []).length) {
           bags += t.other_bags.map((b) => {
             const side = lens === "pick" ? b.pick : b.realized;
             return bagBlock(b.name + " got", side.legs, side.today, side.unpriced);
