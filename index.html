@@ -62,12 +62,11 @@
     @media (min-width: 640px) { .bags { grid-template-columns: 1fr 1fr; } }
     .bag h3 { margin: 0 0 6px; font-size: 0.92rem; }
     .leg { display: flex; justify-content: space-between; gap: 8px; font-size: 0.84rem; padding: 3px 0; color: var(--muted); }
-    button.leg {
-      appearance: none; font: inherit; color: inherit; width: 100%;
-      background: transparent; border: 0; border-radius: 0; padding: 8px 0;
-      cursor: pointer; min-height: 44px; touch-action: manipulation;
+    .leg[data-pick] {
+      width: 100%; padding: 8px 0; cursor: pointer; min-height: 44px;
+      touch-action: manipulation;
     }
-    button.leg.on { color: var(--text); }
+    .leg[data-pick].on { color: var(--text); }
     .hops { margin: 2px 0 10px 8px; padding-left: 10px; border-left: 2px solid var(--line); }
     .hop { display: flex; justify-content: space-between; gap: 8px; font-size: 0.8125rem; padding: 4px 0; color: var(--dim); }
     .hop b { color: var(--text); font-variant-numeric: tabular-nums; }
@@ -98,6 +97,8 @@
     let openId = null;
     let openPick = null;
     let partnerName = null;
+    let boardClock = "today";
+    let boardWindow = "all";
 
     const params = new URLSearchParams(location.search);
     const startMe = params.get("me");
@@ -145,8 +146,8 @@
         const body = "<span>" + l.label + "</span><b>" + val + "</b>";
         if (l.kind === "pick" && l.asset_key) {
           const open = openPick === l.asset_key;
-          return '<button type="button" class="leg' + (open ? " on" : "") + '" data-pick="' + l.asset_key + '">'
-            + body + "</button>" + (open ? hopHtml(l.asset_key) : "");
+          return '<div class="leg' + (open ? " on" : "") + '" data-pick="' + l.asset_key + '">'
+            + body + "</div>" + (open ? hopHtml(l.asset_key) : "");
         }
         return '<div class="leg">' + body + "</div>";
       }).join("");
@@ -192,7 +193,9 @@
     }
 
     function sideOf(t) {
-      return lens === "pick" ? t.pick : t.realized;
+      if (lens === "pick") return t.pick;
+      if (lens === "y3") return t.y3 || t.realized;
+      return t.realized;
     }
 
     function renderHome() {
@@ -210,9 +213,12 @@
           (data.hit ? "Rookie hit: " + data.hit.player + " (" + data.hit.season + " R" + data.hit.round + ")" : "") +
           (data.hit && data.miss ? " · " : "") +
           (data.miss ? "Miss: " + data.miss.player : "") + "</p>" : "")
+        + smashDigest()
         + partnerDigest()
         + "<h2>Latest trades</h2>" + data.recent_trades.map(tradeRow).join("")
-        + "<h2>Latest rookie picks</h2>" + data.recent_rookies.map(pickRow).join("");
+        + "<h2>Latest rookie picks</h2>"
+        + '<p class="caption">Green = player · Blue = pick cost · Number = player today minus what that pick cost on draft day</p>'
+        + data.recent_rookies.map(pickRow).join("");
     }
 
     function styleLine() {
@@ -224,6 +230,20 @@
           ? "you sell picks for players (" + s.sold_picks_for_players + ")"
           : "you sell players for picks (" + s.sold_players_for_picks + ")";
       return '<p class="caption">' + s.label + " · " + dir + "</p>";
+    }
+
+    function smashDigest() {
+      const b = league && league.trade_boards && league.trade_boards.today;
+      if (!b || !b.best || !b.best[0]) return "";
+      const chip = (label, row) => {
+        if (!row) return "";
+        return '<button type="button" class="chip" data-board="today">' + label + " · " + row.name
+          + " · " + fmt(row.today_delta) + "</button>";
+      };
+      return '<h2>League trades</h2><div class="toggle">'
+        + chip("Best smash", b.best[0])
+        + chip("Worst", b.worst && b.worst[0])
+        + "</div>";
     }
 
     function partnerDigest() {
@@ -249,16 +269,31 @@
       const sentShow = s.sent_unpriced && !s.sent_today ? "—" : fmt(s.sent_today);
       let detail = "";
       if (open) {
-        let bags = bagBlock("You got", s.legs, s.today, s.unpriced)
-          + bagBlock("You sent", s.sent, s.sent_today, s.sent_unpriced);
-        if ((t.other_bags || []).length) {
-          bags += t.other_bags.map((b) => {
-            const side = lens === "pick" ? b.pick : b.realized;
-            return bagBlock(b.name + " got", side.legs, side.today, side.unpriced);
+        let bags = bagBlock("You received", s.legs, s.today, s.unpriced)
+          + bagBlock("You gave up", s.sent, s.sent_today, s.sent_unpriced);
+        if ((t.others || []).length > 1) {
+          bags += (t.other_bags || []).map((b) => {
+            const side = lens === "pick" ? b.pick : lens === "y3" ? (b.y3 || b.realized) : b.realized;
+            return bagBlock(b.name + " received", side.legs, side.today, side.unpriced);
           }).join("");
         }
+        const signed = (n) => (n > 0 ? "+" : "") + fmt(n);
+        const aged = lens === "realized" && s.t0_delta != null
+          ? '<p class="caption">At accept: ' + signed(s.t0_delta)
+            + " · since then: " + signed(s.today_delta - s.t0_delta) + "</p>"
+          : "";
+        const clockNote = lens === "pick"
+          ? "This toggle is accept-day prices. Name in parentheses drafted the pick, not who got it in this trade."
+          : lens === "y3"
+          ? "Average of year-end values in the 3 years after accept. Under 300 counts as 0 (retired)."
+          : "Numbers are that player today. Name in parentheses drafted the pick, not who got it in this trade.";
         const line = spark((lens === "pick" ? t.pick_year_ends : t.year_ends).map((p) => ({ as_of: p.as_of, ...p.points })));
-        detail = '<div class="detail"><div class="bags">' + bags + "</div>" + line + "</div>";
+        const hint = line
+          ? '<p class="caption">Each line = that side received bag at year-end · Number on the row = received minus sent'
+            + (lens === "y3" ? " (first 3 years)" : " today") + "</p>"
+          : "";
+        detail = '<div class="detail"><div class="bags">' + bags + "</div>"
+          + aged + '<p class="caption">' + clockNote + "</p>" + line + hint + "</div>";
       }
       const others = t.others.join(" · ");
       return '<button type="button" class="row' + (open ? " open" : "") + '" data-id="' + t.transaction_id + '">'
@@ -296,8 +331,11 @@
       const list = data.drafts[draftTab] || [];
       const used = data.drafts.rookie.length + data.drafts.startup.length;
       const graded = data.drafts.rookie.filter((p) => p.surplus != null).length;
+      const hint = draftTab === "startup"
+        ? "Green = player value · Number = player today (no 2019 pick prices)"
+        : "Green = player · Blue = pick cost · Number = player today minus what that pick cost on draft day";
       return '<p class="caption">' + used + " picks used · " + graded + " rookie picks graded vs pick cost · "
-        + data.drafts.startup.length + " startup (ranked by player today)</p>"
+        + data.drafts.startup.length + " startup (ranked by player today). " + hint + "</p>"
         + '<div class="toggle">'
         + '<button type="button" class="chip' + (draftTab === "rookie" ? " on" : "") + '" data-dt="rookie">Rookie 2020–26</button>'
         + '<button type="button" class="chip' + (draftTab === "startup" ? " on" : "") + '" data-dt="startup">Startup 2019</button>'
@@ -322,8 +360,59 @@
         + '<div class="date">' + t.used + " used · " + t.graded + " graded"
         + (t.best ? " · hit " + t.best.player : "") + "</div>"
       ).join("");
-      return "<h2>Traders · per complete two-way</h2>" + traders
+      return renderTradeBoards()
+        + "<h2>Traders · per complete two-way</h2>" + traders
         + "<h2>Drafters · rookie surplus per pick</h2>" + d;
+    }
+
+    function monthsAgo(ymd, months) {
+      const parts = (ymd || "").split("-").map(Number);
+      if (parts.length < 3) return ymd;
+      let y = parts[0], m = parts[1] - months, d = parts[2];
+      while (m <= 0) { m += 12; y -= 1; }
+      const dim = new Date(y, m, 0).getDate();
+      return y + "-" + String(m).padStart(2, "0") + "-" + String(Math.min(d, dim)).padStart(2, "0");
+    }
+
+    function rankSides(clock, window) {
+      const boards = league && league.trade_boards;
+      if (!boards) return { best: [], worst: [] };
+      const asOf = league.today || "";
+      const months = window === "3m" ? 3 : window === "6m" ? 6 : window === "1y" ? 12 : window === "3y" ? 36 : 0;
+      const cut = months ? monthsAgo(asOf, months) : null;
+      let pool = boards.sides || [];
+      if (cut) pool = pool.filter((r) => r.date >= cut);
+      const key = clock === "aged" ? "aged" : "today_delta";
+      if (clock === "aged") pool = pool.filter((r) => r.aged != null);
+      const best = pool.slice().sort((a, b) => (b[key] ?? -1e15) - (a[key] ?? -1e15)).slice(0, 10);
+      const worst = pool.slice().sort((a, b) => (a[key] ?? 1e15) - (b[key] ?? 1e15)).slice(0, 10);
+      return { best, worst };
+    }
+
+    function renderTradeBoards() {
+      const boards = league && league.trade_boards;
+      if (!boards) return "";
+      const pack = rankSides(boardClock, boardWindow);
+      const you = me && me.name;
+      const scoreOf = (r) => boardClock === "aged" ? r.aged : r.today_delta;
+      const list = (title, rows) => "<h2>" + title + "</h2>" + (rows || []).map((r) =>
+        '<button type="button" class="row" data-open-me="' + r.user_id + '" data-id="' + r.transaction_id + '">'
+        + '<div class="row-top"><div><div class="names' + (r.name === you ? " you" : "") + '">'
+        + r.name + (r.name === you ? " · you" : "") + " vs " + r.other + "</div>"
+        + '<div class="date">' + r.date + (r.headline ? " · " + r.headline : "") + "</div></div>"
+        + '<div class="margin ' + cls(scoreOf(r)) + '">' + fmt(scoreOf(r)) + "</div></div></button>"
+      ).join("");
+      const windows = [["3m","3 months"],["6m","6 months"],["1y","1 year"],["3y","3 years"],["all","All time"]];
+      return '<p class="caption">Complete 2-team only. Became the player. As of today = received minus sent now. Aged = that minus the same at accept. Window = trade date.</p>'
+        + '<div class="toggle">'
+        + '<button type="button" class="chip' + (boardClock === "today" ? " on" : "") + '" data-board="today">As of today</button>'
+        + '<button type="button" class="chip' + (boardClock === "aged" ? " on" : "") + '" data-board="aged">Aged after accept</button>'
+        + "</div>"
+        + '<div class="toggle">'
+        + windows.map((w) => '<button type="button" class="chip' + (boardWindow === w[0] ? " on" : "") + '" data-window="' + w[0] + '">' + w[1] + "</button>").join("")
+        + "</div>"
+        + list("Best 10", pack.best)
+        + list("Worst 10", pack.worst);
     }
 
     function renderPartners() {
@@ -365,7 +454,9 @@
         + '<div class="toggle">'
         + '<button type="button" class="chip' + (lens === "realized" ? " on" : "") + '" data-lens="realized">Became the player</button>'
         + '<button type="button" class="chip' + (lens === "pick" ? " on" : "") + '" data-lens="pick">Pick at trade day</button>'
-        + "</div>";
+        + '<button type="button" class="chip' + (lens === "y3" ? " on" : "") + '" data-lens="y3">First 3 years</button>'
+        + "</div>"
+        + (lens === "y3" ? '<p class="caption">Average of year-end values in the 3 years after accept. Under 300 counts as 0 (retired).</p>' : "");
       const body = view === "home" ? renderHome() : view === "trades" ? renderTrades()
         : view === "partners" ? renderPartners() : view === "drafts" ? renderDrafts() : renderLeague();
       app.innerHTML = nav + body;
@@ -382,6 +473,22 @@
         render();
         return;
       }
+      const boardRow = e.target.closest("[data-open-me]");
+      if (boardRow) {
+        const uid = boardRow.dataset.openMe;
+        const tx = boardRow.dataset.id;
+        Promise.resolve(me && me.user_id === uid ? null : selectMe(uid)).then(() => {
+          view = "trades";
+          openId = tx;
+          partnerName = null;
+          render();
+        });
+        return;
+      }
+      const boardBtn = e.target.closest("[data-board]");
+      if (boardBtn) { boardClock = boardBtn.dataset.board; view = "league"; openId = null; render(); return; }
+      const windowBtn = e.target.closest("[data-window]");
+      if (windowBtn) { boardWindow = windowBtn.dataset.window; view = "league"; openId = null; render(); return; }
       const viewBtn = e.target.closest("[data-view]");
       if (viewBtn) { view = viewBtn.dataset.view; openId = null; if (view !== "partners") partnerName = null; render(); return; }
       const partnerBtn = e.target.closest("[data-partner]");
