@@ -17,7 +17,7 @@
       --red: #e05555;
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; background: var(--bg); color: var(--text); }
+    html, body { margin: 0; background: var(--bg); color: var(--text); overflow-x: hidden; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       padding: 20px 16px 48px;
@@ -59,6 +59,30 @@
     }
     .stat b { display: block; font-size: 1.05rem; margin-bottom: 2px; }
     .stat span { color: var(--muted); font-size: 0.75rem; }
+    .clown-stat {
+      appearance: none;
+      width: 100%;
+      font: inherit;
+      color: inherit;
+      position: relative;
+      cursor: help;
+      text-align: left;
+    }
+    .clown-tip {
+      display: none;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 400;
+      line-height: 1.45;
+    }
+    .clown-stat.open .clown-tip { display: block; }
+    @media (hover: hover) {
+      .clown-stat:hover .clown-tip,
+      .clown-stat:focus-within .clown-tip { display: block; }
+    }
     .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 12px; }
     .chip {
       appearance: none;
@@ -71,15 +95,16 @@
       font-weight: 560;
     }
     .chip.active { background: #f0f0f0; color: #111; border-color: #f0f0f0; }
-    .chart-wrap { overflow: hidden; }
-    #chart { display: block; width: 100%; max-width: 100%; height: auto; touch-action: manipulation; }
+    .chart-wrap { overflow: hidden; width: 100%; max-width: 100%; min-width: 0; }
+    #chart { display: block; width: 100%; max-width: 100%; min-width: 0; height: auto; touch-action: manipulation; }
     #team-taps {
       display: none;
       margin: 6px 0 0;
     }
     #team-taps.on {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 8px;
     }
     #team-taps button {
       appearance: none;
@@ -188,7 +213,7 @@
 
   <details open>
     <summary><h2>Yearly finish</h2></summary>
-    <p class="hint">Tap a name on the right to isolate that line. Tap a year on the bottom for that season’s standings.</p>
+    <p class="hint">Tap a team name to isolate that line. Tap a year on the bottom for that season’s standings.</p>
     <div class="chart-wrap">
       <svg id="chart" viewBox="0 0 390 430" role="img" aria-label="League finish by year"></svg>
     </div>
@@ -332,7 +357,7 @@
         worst: Math.max(...finishes),
         titles: finishes.filter((n) => n === 1).length,
         playoffs: finishes.filter((n) => n <= 6).length,
-        podiums: finishes.filter((n) => n === 2 || n === 3).length,
+        podiums: finishes.filter((n) => n <= 3).length,
         toilets: finishes.filter((n) => n >= 7).length,
         latest: finishes[finishes.length - 1],
         hypoAvg: (finishes.reduce((a, b) => a + b, 0) + 1) / (finishes.length + 1),
@@ -369,8 +394,18 @@
     }
 
     function renderStats() {
+      const clownWhy = [
+        "From this page’s 2019–2025 finish table. A championship is 1st place.",
+        "Only teams with zero titles are eligible.",
+        "clownScore = playoffs×3 + podiums×2 + (11 − avg).",
+        "Playoffs = finishes ≤ 6. Podiums = finishes ≤ 3. Avg = mean finish.",
+        "Highest score among 0-title teams is Biggest clown: the strongest team that has never won it all.",
+      ].join(" ");
       document.getElementById("stats").innerHTML = `
-        <div class="stat" title="Among 0-title teams: playoffs×3 + podiums×2 + (11−avg)"><b>${clown.team}</b><span>Biggest clown · 0 titles</span></div>
+        <button class="stat clown-stat" type="button" id="clown-stat" title="${clownWhy}" aria-expanded="false" aria-describedby="clown-tip">
+          <b>${clown.team}</b><span>Biggest clown</span>
+          <div class="clown-tip" id="clown-tip">${clownWhy}</div>
+        </button>
         <div class="stat"><b>${steadiest.team}</b><span>Steadiest · ±${fmt(steadiest.stdev)}</span></div>
         <div class="stat"><b>${fmt(bestAvg.avg)}</b><span>Best average · ${bestAvg.team}</span></div>
         <div class="stat"><b>${mostTitles.titles} titles</b><span>${mostTitles.team} · 2019–21 three-peat</span></div>
@@ -380,6 +415,11 @@
         <div class="stat"><b>${mostPlayoffs.playoffs} / 7</b><span>Most playoffs · ${mostPlayoffs.team}</span></div>
         <div class="stat"><b>${mostToilets.toilets} / 7</b><span>Most toilet bowls · ${mostToilets.team}</span></div>
       `;
+      const clownEl = document.getElementById("clown-stat");
+      clownEl.onclick = () => {
+        const open = clownEl.classList.toggle("open");
+        clownEl.setAttribute("aria-expanded", open ? "true" : "false");
+      };
     }
 
     function renderReset() {
@@ -401,8 +441,24 @@
 
     function chartLayout(width) {
       const phone = width < 520;
-      const left = phone ? 22 : 36;
+      const left = phone ? 18 : 36;
       const yearSize = phone ? 11 : 12;
+      const rankGap = phone ? 32 : 36;
+      const bottom = phone ? 36 : 36;
+      const top = 14;
+      if (phone) {
+        return {
+          phone, width, height: top + rankGap * 9 + bottom,
+          pad: { top, right: 8, bottom, left },
+          plotW: width - left - 8,
+          plotH: rankGap * 9,
+          rankGap, nameSize: 10, yearSize,
+          nameLines: {},
+          axisShort: true,
+          useTapList: true,
+          yearLabel: (y) => "'" + String(y).slice(2),
+        };
+      }
       const minPlot = Math.max(168, (YEARS.length - 1) * (measureText("2025", yearSize) + 6));
       const room = Math.max(52, width - left - minPlot);
       const tryFit = (fontSize, names) => {
@@ -411,19 +467,9 @@
         const right = Math.ceil(widest + 14);
         return { fontSize, names, lines, right, ok: right <= room };
       };
-      const attempt =
-        tryFit(phone ? 11 : 12, TEAMS).ok ? tryFit(phone ? 11 : 12, TEAMS) :
-        tryFit(10, TEAMS).ok ? tryFit(10, TEAMS) :
-        tryFit(10, TEAMS.map(shortName));
-      const axisShort = attempt.names !== TEAMS;
-      const rankGap = phone ? 44 : 36;
-      const bottom = phone ? 48 : 36;
-      const top = 16;
-      const height = top + rankGap * 9 + bottom;
+      const attempt = tryFit(12, TEAMS).ok ? tryFit(12, TEAMS) : tryFit(11, TEAMS);
       return {
-        phone,
-        width,
-        height,
+        phone, width, height: top + rankGap * 9 + bottom,
         pad: { top, right: attempt.right, bottom, left },
         plotW: Math.max(140, width - left - attempt.right),
         plotH: rankGap * 9,
@@ -431,8 +477,9 @@
         nameSize: attempt.fontSize,
         yearSize,
         nameLines: Object.fromEntries(TEAMS.map((team, i) => [team, attempt.lines[i]])),
-        axisShort,
-        useTapList: axisShort || !attempt.ok,
+        axisShort: false,
+        useTapList: false,
+        yearLabel: (y) => String(y),
       };
     }
 
@@ -447,6 +494,8 @@
       const yAt = (place) => pad.top + ((place - 1) / 9) * plotH;
       const ns = "http://www.w3.org/2000/svg";
       svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      svg.setAttribute("width", "100%");
+      svg.setAttribute("preserveAspectRatio", "xMinYMin meet");
       svg.replaceChildren();
 
       const add = (name, attrs, parent = svg) => {
@@ -501,7 +550,7 @@
           fill: hoverYear === year ? "#f0f0f0" : "#9a9aa3",
           "font-size": yearSize, "font-weight": hoverYear === year ? 600 : 400,
         });
-        label.textContent = year;
+        label.textContent = layout.yearLabel(year);
         label.style.cursor = "pointer";
         label.style.pointerEvents = "none";
       });
@@ -523,31 +572,33 @@
             fill: "#0b0b0d", stroke: color, "stroke-width": place === 1 ? 2.4 : 1.8,
           }, g);
         });
-        const lines = nameLines[team];
-        const y = yAt(finishes[finishes.length - 1]);
-        const nameHit = add("rect", {
-          x: width - pad.right,
-          y: y - rankGap / 2,
-          width: pad.right,
-          height: rankGap,
-          fill: "transparent",
-        }, g);
-        nameHit.style.cursor = "pointer";
-        nameHit.addEventListener("click", () => pickTeam(team));
-        const name = add("text", {
-          x: width - pad.right + 8,
-          y: y + 4 - (lines.length - 1) * 6,
-          fill: on ? color : "#4a4a52",
-          "font-size": nameSize,
-          "font-weight": on && focus !== "all" ? 600 : 500,
-        }, g);
-        name.style.pointerEvents = "none";
-        lines.forEach((line, li) => {
-          const span = add("tspan", { x: width - pad.right + 8, dy: li === 0 ? 0 : nameSize + 1 }, name);
-          span.textContent = line;
-        });
-        const tip = add("title", {}, name);
-        tip.textContent = team;
+        if (!layout.useTapList) {
+          const lines = nameLines[team];
+          const y = yAt(finishes[finishes.length - 1]);
+          const nameHit = add("rect", {
+            x: width - pad.right,
+            y: y - rankGap / 2,
+            width: pad.right,
+            height: rankGap,
+            fill: "transparent",
+          }, g);
+          nameHit.style.cursor = "pointer";
+          nameHit.addEventListener("click", () => pickTeam(team));
+          const name = add("text", {
+            x: width - pad.right + 8,
+            y: y + 4 - (lines.length - 1) * 6,
+            fill: on ? color : "#4a4a52",
+            "font-size": nameSize,
+            "font-weight": on && focus !== "all" ? 600 : 500,
+          }, g);
+          name.style.pointerEvents = "none";
+          lines.forEach((line, li) => {
+            const span = add("tspan", { x: width - pad.right + 8, dy: li === 0 ? 0 : nameSize + 1 }, name);
+            span.textContent = line;
+          });
+          const tip = add("title", {}, name);
+          tip.textContent = team;
+        }
       });
 
       renderTeamTaps(layout);
