@@ -68,7 +68,35 @@
     }
     .chip.active { background: #f0f0f0; color: #111; border-color: #f0f0f0; }
     .chart-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    svg { display: block; min-width: 640px; width: 100%; height: auto; }
+    #chart { display: block; min-width: 640px; width: 100%; height: auto; }
+    .bars { display: flex; flex-direction: column; gap: 9px; margin: 12px 0 8px; }
+    .bar-row {
+      display: grid;
+      grid-template-columns: minmax(92px, 28%) 1fr 44px;
+      gap: 8px;
+      align-items: center;
+    }
+    .bar-name {
+      font-size: 0.78rem;
+      font-weight: 560;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .bar-track {
+      height: 12px;
+      background: #1a1a1e;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .bar-fill { height: 100%; border-radius: 999px; }
+    .bar-val {
+      font-size: 0.75rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      text-align: right;
+    }
     .detail {
       background: var(--card);
       border: 1px solid var(--line);
@@ -117,6 +145,14 @@
   </div>
   <div id="focus-panel"></div>
   <div id="year-panel"></div>
+
+  <h2>Most volatile</h2>
+  <p class="caption">Year-to-year swing in finish, 2019–2025. Longer bar = wilder career. Sample standard deviation of place.</p>
+  <div class="bars" id="volatility"></div>
+
+  <h2>Average finish</h2>
+  <p class="caption">Mean place across 7 seasons. Shorter bar is better. 1st would be a tiny bar; 10th would fill the row.</p>
+  <div class="bars" id="averages"></div>
 
   <h2>Every finish</h2>
   <div class="chips" id="sorts"></div>
@@ -349,6 +385,27 @@
       `;
     }
 
+    function renderBars() {
+      const vol = [...all].sort((a, b) => b.stdev - a.stdev);
+      const maxSwing = vol[0].stdev;
+      document.getElementById("volatility").innerHTML = vol.map((s) => `
+        <div class="bar-row">
+          <div class="bar-name" style="color:${COLOR[s.team]}">${s.team}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${(s.stdev / maxSwing) * 100}%;background:${COLOR[s.team]}"></div></div>
+          <div class="bar-val">±${fmt(s.stdev)}</div>
+        </div>
+      `).join("");
+
+      const avgs = [...all].sort((a, b) => a.avg - b.avg);
+      document.getElementById("averages").innerHTML = avgs.map((s) => `
+        <div class="bar-row">
+          <div class="bar-name" style="color:${COLOR[s.team]}">${s.team}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${(s.avg / 10) * 100}%;background:${COLOR[s.team]}"></div></div>
+          <div class="bar-val">${fmt(s.avg)}</div>
+        </div>
+      `).join("");
+    }
+
     function renderTable() {
       const sorts = [
         ["consistency", "Steadiest"],
@@ -390,6 +447,7 @@
       drawChart();
       renderFocus();
       renderYear();
+      renderBars();
       renderTable();
     }
 
