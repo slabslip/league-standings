@@ -14,7 +14,6 @@
       --muted: #9a9aa3;
       --dim: #6a6a73;
       --green: #3ddc97;
-      --warn: #e8c030;
       --red: #e05555;
     }
     * { box-sizing: border-box; }
@@ -30,11 +29,24 @@
     h2 { font-size: 1.05rem; font-weight: 650; margin: 28px 0 8px; }
     p { color: var(--muted); line-height: 1.45; margin: 0 0 16px; font-size: 0.95rem; }
     .caption { font-size: 0.75rem; color: var(--dim); margin: 6px 0 0; }
+    .hint {
+      background: #1a1a22;
+      border: 1px solid #3d3d4a;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      color: #d8d8e0;
+      margin: 0 0 12px;
+    }
     .stats {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
       margin: 16px 0;
+    }
+    @media (min-width: 640px) {
+      .stats { grid-template-columns: repeat(4, 1fr); }
     }
     .stat {
       background: var(--card);
@@ -44,17 +56,6 @@
     }
     .stat b { display: block; font-size: 1.05rem; margin-bottom: 2px; }
     .stat span { color: var(--muted); font-size: 0.75rem; }
-    .callout {
-      background: #10241c;
-      border: 1px solid #1f4a38;
-      border-radius: 10px;
-      padding: 12px 14px;
-      font-size: 0.9rem;
-      line-height: 1.45;
-      color: #d7efe4;
-      margin-bottom: 18px;
-    }
-    .callout strong { color: var(--green); }
     .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 12px; }
     .chip {
       appearance: none;
@@ -72,12 +73,12 @@
     .bars { display: flex; flex-direction: column; gap: 9px; margin: 12px 0 8px; }
     .bar-row {
       display: grid;
-      grid-template-columns: minmax(92px, 28%) 1fr 44px;
+      grid-template-columns: minmax(110px, 28%) 1fr 48px;
       gap: 8px;
       align-items: center;
     }
     #averages .bar-row {
-      grid-template-columns: minmax(92px, 26%) 1fr 108px;
+      grid-template-columns: minmax(118px, 30%) 1fr minmax(92px, 7.8rem);
       cursor: pointer;
       padding: 6px 4px;
       border-radius: 8px;
@@ -110,7 +111,6 @@
       color: var(--muted);
       text-align: right;
     }
-    .bar-delta { color: var(--green); }
     .move-note {
       background: var(--card);
       border: 1px solid var(--line);
@@ -155,35 +155,34 @@
 </head>
 <body>
   <h1>League finish, 2019–2025</h1>
-  <p>Every team, every year. 1st is at the top. Tap a name to isolate their line. Tap a year on the chart for that season’s table.</p>
+  <p>Every team, every year. 1st is at the top.</p>
 
   <div class="stats" id="stats"></div>
-  <div class="callout" id="callout"></div>
 
   <h2>Yearly finish</h2>
-  <p class="caption">Place · 1 at top, 10 at bottom · dashed line is the playoff cut (top 6) · 7th–10th is the toilet bowl · championships are the bigger rings</p>
-  <div class="chips" id="chips"></div>
+  <p class="hint">Tap a name on the right to isolate that line. Tap a year on the bottom for that season’s standings.</p>
   <div class="chart-wrap">
     <svg id="chart" viewBox="0 0 860 420" role="img" aria-label="League finish by year"></svg>
   </div>
+  <div id="chart-reset"></div>
   <div id="focus-panel"></div>
   <div id="year-panel"></div>
 
   <h2>Most volatile</h2>
-  <p class="caption">Year-to-year swing in finish, 2019–2025. Longer bar = wilder career. Sample standard deviation of place.</p>
+  <p class="caption">Sample standard deviation of place. Longer = wilder.</p>
   <div class="bars" id="volatility"></div>
 
   <h2>Average finish</h2>
-  <p class="caption" id="avg-caption">Tap a team to give them a 2026 title. Only they get the win; the list re-sorts. Shorter bar is better.</p>
+  <p class="caption" id="avg-caption">Tap a team to project a 2026 title and see where they move.</p>
   <div id="avg-move"></div>
   <div class="bars" id="averages"></div>
 
   <h2>Playoff appearances</h2>
-  <p class="caption">Top 6 each year, 2019–2025. Out of 7 seasons.</p>
+  <p class="caption">Top 6, 2019–2025 · out of 7</p>
   <div class="bars" id="playoffs"></div>
 
   <h2>Toilet bowl appearances</h2>
-  <p class="caption">Bottom 4 each year (7th–10th), 2019–2025. Out of 7 seasons.</p>
+  <p class="caption">7th–10th, 2019–2025 · out of 7</p>
   <div class="bars" id="toilets"></div>
 
   <h2>Every finish</h2>
@@ -191,7 +190,7 @@
   <div class="table-wrap">
     <table id="table"></table>
   </div>
-  <p class="caption">Green = 1st · blue = podium · red = toilet bowl (7th–10th) · playoffs are top 6</p>
+  <p class="caption">Green = 1st · blue = podium · red = toilet (7th–10th)</p>
 
   <script>
     const YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025];
@@ -232,6 +231,11 @@
     const fmt = (n) => n.toFixed(2);
     const ordinal = (n) => (n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : n + "th");
     const markClass = (n) => (n === 1 ? "p1" : n <= 3 ? "p23" : n >= 7 ? "toilet" : "playoff");
+    const playoffStreak = (xs) => {
+      let n = 0;
+      for (let i = xs.length - 1; i >= 0 && xs[i] <= 6; i--) n++;
+      return n;
+    };
 
     const all = TEAMS.map((team) => {
       const finishes = FINISH[team];
@@ -240,26 +244,26 @@
         finishes,
         avg: mean(finishes),
         stdev: stdev(finishes),
+        last3: mean(finishes.slice(-3)),
+        streak: playoffStreak(finishes),
         best: Math.min(...finishes),
         worst: Math.max(...finishes),
         titles: finishes.filter((n) => n === 1).length,
-        podiums: finishes.filter((n) => n <= 3).length,
         playoffs: finishes.filter((n) => n <= 6).length,
         toilets: finishes.filter((n) => n >= 7).length,
         latest: finishes[finishes.length - 1],
         hypoAvg: (finishes.reduce((a, b) => a + b, 0) + 1) / (finishes.length + 1),
       };
     });
-    all.forEach((s) => { s.hypoDelta = s.hypoAvg - s.avg; });
     const avgOrder = [...all].sort((a, b) => a.avg - b.avg);
-    all.forEach((s) => {
-      s.avgRank = avgOrder.findIndex((x) => x.team === s.team) + 1;
-    });
+    all.forEach((s) => { s.avgRank = avgOrder.findIndex((x) => x.team === s.team) + 1; });
 
     const steadiest = [...all].sort((a, b) => a.stdev - b.stdev)[0];
     const bestAvg = [...all].sort((a, b) => a.avg - b.avg)[0];
     const mostTitles = [...all].sort((a, b) => b.titles - a.titles)[0];
-    const wildest = [...all].sort((a, b) => b.stdev - a.stdev)[0];
+    const champ = all.find((s) => s.latest === 1);
+    const longestStreak = [...all].sort((a, b) => b.streak - a.streak || a.avg - b.avg)[0];
+    const bestLast3 = [...all].sort((a, b) => a.last3 - b.last3)[0];
     const mostPlayoffs = [...all].sort((a, b) => b.playoffs - a.playoffs || a.avg - b.avg)[0];
     const mostToilets = [...all].sort((a, b) => b.toilets - a.toilets || b.avg - a.avg)[0];
 
@@ -281,28 +285,22 @@
 
     function renderStats() {
       document.getElementById("stats").innerHTML = `
-        <div class="stat"><b>${steadiest.team}</b><span>Steadiest · ±${fmt(steadiest.stdev)} places</span></div>
-        <div class="stat"><b>${bestAvg.team}</b><span>Best average · ${fmt(bestAvg.avg)}</span></div>
-        <div class="stat"><b>${mostTitles.titles} titles</b><span>${mostTitles.team}</span></div>
-        <div class="stat"><b>${wildest.team}</b><span>Wildest swing · ±${fmt(wildest.stdev)}</span></div>
+        <div class="stat"><b>${steadiest.team}</b><span>Steadiest · ±${fmt(steadiest.stdev)}</span></div>
+        <div class="stat"><b>${fmt(bestAvg.avg)}</b><span>Best average · ${bestAvg.team}</span></div>
+        <div class="stat"><b>${mostTitles.titles} titles</b><span>${mostTitles.team} · 2019–21 three-peat</span></div>
+        <div class="stat"><b>${champ.team}</b><span>2025 champion</span></div>
+        <div class="stat"><b>${longestStreak.streak} yrs</b><span>Playoff streak · ${longestStreak.team}</span></div>
+        <div class="stat"><b>${fmt(bestLast3.last3)}</b><span>Best last 3 years · ${bestLast3.team}</span></div>
         <div class="stat"><b>${mostPlayoffs.playoffs} / 7</b><span>Most playoffs · ${mostPlayoffs.team}</span></div>
         <div class="stat"><b>${mostToilets.toilets} / 7</b><span>Most toilet bowls · ${mostToilets.team}</span></div>
       `;
-      document.getElementById("callout").innerHTML =
-        `<strong>${steadiest.team}</strong> is the flattest good line: average ${fmt(steadiest.avg)}, ${steadiest.playoffs} playoffs, ${steadiest.toilets} toilet bowl. Arae three-peated then slid to 9th. SF69erss sat in the toilet bowl four years, then went back-to-back. Top 6 makes playoffs; 7th–10th is the toilet bowl.`;
     }
 
-    function renderChips() {
-      const rows = [{ team: "all", label: "All teams" }, ...sorted().map((s) => ({ team: s.team, label: s.team }))];
-      document.getElementById("chips").innerHTML = rows.map((r) =>
-        `<button class="chip${focus === r.team ? " active" : ""}" data-team="${r.team}">${r.label}</button>`
-      ).join("");
-      document.getElementById("chips").onclick = (e) => {
-        const btn = e.target.closest("[data-team]");
-        if (!btn) return;
-        focus = btn.dataset.team;
-        draw();
-      };
+    function renderReset() {
+      const el = document.getElementById("chart-reset");
+      if (focus === "all") { el.innerHTML = ""; return; }
+      el.innerHTML = `<button class="chip" type="button" id="show-all">Show all teams</button>`;
+      document.getElementById("show-all").onclick = () => { focus = "all"; draw(); };
     }
 
     function drawChart() {
@@ -329,7 +327,6 @@
           x1: pad.left, x2: width - pad.right, y1: y, y2: y,
           stroke: "#2a2a30",
           "stroke-width": place === 1 || place === 10 ? 1.25 : 1,
-          "stroke-dasharray": place === 6 ? "4 4" : "",
         });
         const t = add("text", {
           x: pad.left - 10, y: y + 4, "text-anchor": "end",
@@ -443,20 +440,26 @@
       `;
     }
 
+    function pickAvg(team) {
+      avgWin = avgWin === team ? null : team;
+      renderAverages();
+    }
+
     function renderAverages() {
-      const caption = document.getElementById("avg-caption");
       const move = document.getElementById("avg-move");
       const winner = avgWin ? all.find((s) => s.team === avgWin) : null;
       const rows = all
         .map((s) => ({ ...s, shown: winner && s.team === winner.team ? s.hypoAvg : s.avg }))
         .sort((a, b) => a.shown - b.shown || a.team.localeCompare(b.team));
+      const keep = document.activeElement?.dataset?.avg;
+
+      document.getElementById("avg-caption").textContent =
+        "Tap a team to project a 2026 title and see where they move.";
 
       if (!winner) {
-        caption.textContent = "Tap a team to give them a 2026 title. Only they get the win; the list re-sorts. Shorter bar is better.";
         move.innerHTML = "";
       } else {
         const newRank = rows.findIndex((s) => s.team === winner.team) + 1;
-        caption.textContent = `${winner.team} wins 2026. Everyone else keeps today’s 7-year average.`;
         move.innerHTML = `<div class="move-note"><strong>${winner.team}</strong> ${ordinal(winner.avgRank)} → ${ordinal(newRank)} · ${fmt(winner.avg)} → ${fmt(winner.hypoAvg)}</div>
           <button class="chip" type="button" id="avg-reset">Today’s ranking</button>`;
       }
@@ -464,7 +467,7 @@
       document.getElementById("averages").innerHTML = rows.map((s, i) => {
         const picked = winner && s.team === winner.team;
         return `
-        <div class="bar-row${picked ? " picked" : ""}" data-avg="${s.team}">
+        <div class="bar-row${picked ? " picked" : ""}" data-avg="${s.team}" tabindex="0" role="button" aria-pressed="${picked ? "true" : "false"}">
           <div class="bar-name" style="color:${COLOR[s.team]}">${i + 1}. ${s.team}</div>
           <div class="bar-track">
             ${picked ? `<div class="bar-fill bar-ghost" style="width:${(s.avg / 10) * 100}%;background:${COLOR[s.team]}"></div>` : ""}
@@ -474,14 +477,21 @@
         </div>`;
       }).join("");
 
-      document.getElementById("averages").onclick = (e) => {
+      const box = document.getElementById("averages");
+      box.onclick = (e) => {
+        const row = e.target.closest("[data-avg]");
+        if (row) pickAvg(row.dataset.avg);
+      };
+      box.onkeydown = (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
         const row = e.target.closest("[data-avg]");
         if (!row) return;
-        avgWin = avgWin === row.dataset.avg ? null : row.dataset.avg;
-        renderAverages();
+        e.preventDefault();
+        pickAvg(row.dataset.avg);
       };
       const reset = document.getElementById("avg-reset");
       if (reset) reset.onclick = () => { avgWin = null; renderAverages(); };
+      if (keep) box.querySelector(`[data-avg="${keep}"]`)?.focus();
     }
 
     function renderBars() {
@@ -526,13 +536,13 @@
         ["latest", "2025 finish"],
       ];
       document.getElementById("sorts").innerHTML = sorts.map(([k, label]) =>
-        `<button class="chip${sortKey === k ? " active" : ""}" data-sort="${k}">${label}</button>`
+        `<button class="chip${sortKey === k ? " active" : ""}" type="button" data-sort="${k}">${label}</button>`
       ).join("");
       document.getElementById("sorts").onclick = (e) => {
         const btn = e.target.closest("[data-sort]");
         if (!btn) return;
         sortKey = btn.dataset.sort;
-        draw();
+        renderTable();
       };
 
       const rows = sorted();
@@ -556,8 +566,8 @@
     }
 
     function draw() {
-      renderChips();
       drawChart();
+      renderReset();
       renderFocus();
       renderYear();
       renderBars();
